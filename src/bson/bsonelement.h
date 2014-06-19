@@ -585,6 +585,7 @@ namespace _bson {
      *  NaNs -> 0
      *  very large doubles -> LLONG_MAX
      *  very small doubles -> LLONG_MIN  */
+    /*
     inline long long BSONElement::safeNumberLong() const {
         double d;
         switch( type() ) {
@@ -603,7 +604,7 @@ namespace _bson {
             return numberLong();
         }
     }
-
+    */
     inline BSONElement::BSONElement() {
         static char z = 0;
         data = &z;

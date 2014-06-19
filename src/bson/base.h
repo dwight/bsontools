@@ -9,8 +9,11 @@ namespace _bson {
         MsgAssertionException(unsigned, std::string);
     };
 
+    class StringData;
+
+    void massert(unsigned, const char *, bool);
     void uassert(unsigned, const char *, bool);
-    void msgasserted(unsigned, const char *);
+    void msgasserted(unsigned, StringData);
     void verify(bool);
 
 }
