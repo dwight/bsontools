@@ -23,11 +23,8 @@
 #include <sstream>
 #include <stdio.h>
 #include <string>
-//#include <string.h>
 
-//#include "mongo/bson/inline_decls.h"
 #include "string_data.h"
-//....#include "mongo/util/assert_util.h"
 
 namespace _bson {
     /* Accessing unaligned doubles on ARM generates an alignment trap and aborts with SIGBUS on Linux.
@@ -38,7 +35,6 @@ namespace _bson {
     struct PackedDouble {
         double d;
     } PACKED_DECL;
-
 
     /* Note the limit here is rather arbitrary and is simply a standard. generally the code works
        with any object that fits in ram.
@@ -340,4 +336,5 @@ namespace _bson {
     typedef StringBuilderImpl<TrivialAllocator> StringBuilder;
     typedef StringBuilderImpl<StackAllocator> StackStringBuilder;
 
-} // namespace mongo
+}
+

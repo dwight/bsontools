@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "time_support.h"
+
 namespace _bson {
 
 #pragma pack(1)
