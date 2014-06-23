@@ -13,8 +13,11 @@
   <ItemGroup>
     <ClCompile Include="..\..\src\bsontools\fromjson.cpp" />
     <ClCompile Include="..\..\src\bson\base64.cpp" />
+    <ClCompile Include="..\..\src\bson\bson.cpp" />
+    <ClCompile Include="..\..\src\bson\hex.cpp" />
     <ClCompile Include="..\..\src\bson\json.cpp" />
     <ClCompile Include="..\..\src\bson\parse_number.cpp" />
+    <ClCompile Include="..\..\src\bson\time_support.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\bson\base.h" />
@@ -29,6 +32,7 @@
     <ClInclude Include="..\..\src\bson\hex.h" />
     <ClInclude Include="..\..\src\bson\json.h" />
     <ClInclude Include="..\..\src\bson\oid.h" />
+    <ClInclude Include="..\..\src\bson\ordering.h" />
     <ClInclude Include="..\..\src\bson\parse_number.h" />
     <ClInclude Include="..\..\src\bson\status.h" />
     <ClInclude Include="..\..\src\bson\status_with.h" />

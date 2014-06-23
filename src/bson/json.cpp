@@ -83,7 +83,7 @@ namespace _bson {
 
     Status JParse::parseError(const StringData& msg) {
         std::ostringstream ossmsg;
-        ossmsg << msg;
+        ossmsg << msg.toString();
         ossmsg << ": offset:";
         ossmsg << offset();
         ossmsg << " of:";
@@ -522,7 +522,8 @@ namespace _bson {
         if (!readToken(RBRACE)) {
             return parseError("Expecting '}'");
         }
-        builder.appendTimestamp(fieldName, (static_cast<uint64_t>(seconds))*1000, count);
+        assert(false);
+        //builder.appendTimestamp(fieldName, (static_cast<uint64_t>(seconds))*1000, count);
         return Status::OK();
     }
 
@@ -753,7 +754,8 @@ namespace _bson {
         if (!readToken(RPAREN)) {
             return parseError("Expecting ')'");
         }
-        builder.appendTimestamp(fieldName, (static_cast<uint64_t>(seconds))*1000, count);
+        assert(false);
+        //builder.appendTimestamp(fieldName, (static_cast<uint64_t>(seconds)) * 1000, count);
         return Status::OK();
     }
 
@@ -1191,14 +1193,13 @@ namespace _bson {
         return true;
     }
 
-    bsonobj fromjson(const char* jsonString, int* len) {
+    bsonobj fromjson(const char* jsonString, BSONObjBuilder& builder) {
         MONGO_JSON_DEBUG("jsonString: " << jsonString);
         if (jsonString[0] == '\0') {
-            if (len) *len = 0;
+            //if (len) *len = 0;
             return bsonobj();
         }
         JParse jparse(jsonString);
-        BSONObjBuilder builder;
         Status ret = Status::OK();
         try {
             ret = jparse.object("UNUSED", builder, false);
@@ -1214,12 +1215,12 @@ namespace _bson {
             message << "code " << ret.code() << ": " << ret.codeString() << ": " << ret.reason();
             throw MsgAssertionException(16619, message.str());
         }
-        if (len) *len = jparse.offset();
+        //if (len) *len = jparse.offset();
         return builder.obj();
     }
 
-    bsonobj fromjson(const std::string& str) {
-        return fromjson( str.c_str() );
+    bsonobj fromjson(const std::string& str, BSONObjBuilder& b) {
+        return fromjson( str.c_str(), b );
     }
 
 }  /* namespace mongo */

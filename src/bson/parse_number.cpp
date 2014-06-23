@@ -20,7 +20,6 @@
 #include <cstdlib>
 #include <limits>
 #include <string>
-
 #include "cstdint.h"
 
 namespace _bson {

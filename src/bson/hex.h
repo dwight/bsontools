@@ -18,7 +18,6 @@
 #pragma once
 
 #include <string>
-
 #include "string_data.h"
 #include "builder.h"
 
@@ -73,4 +72,39 @@ namespace _bson {
 
         return out.str();
     }
+
+    template<typename T>
+    std::string integerToHexDef(T inInt);
+
+    template<typename T>
+    std::string integerToHexDef(T inInt) {
+        if (!inInt)
+            return "0";
+
+        static const char hexchars[] = "0123456789ABCDEF";
+
+        static const size_t outbufSize = sizeof(T) * 2 + 1;
+        char outbuf[outbufSize];
+        outbuf[outbufSize - 1] = '\0';
+
+        char c;
+        int lastSeenNumber = 0;
+        for (int j = int(outbufSize) - 2; j >= 0; j--) {
+            c = hexchars[inInt & 0xF];
+            if (c != '0')
+                lastSeenNumber = j;
+            outbuf[j] = c;
+            inInt = inInt >> 4;
+        }
+        char *bufPtr = outbuf;
+        bufPtr += lastSeenNumber;
+
+        return std::string(bufPtr);
+    }
+
+
+    inline std::string integerToHex(int i) {
+        return integerToHexDef<int>(i);
+    }
+
 }

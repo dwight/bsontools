@@ -17,13 +17,8 @@
 
 #include <string>
 
-//#include "mongo/bson/bsonobj.h"
-//#include "mongo/base/status.h"
-//#include "mongo/client/export_macros.h"
-
 namespace _bson {
     class Status;
-
     class bsonobj;
     class StringData;
     class BSONObjBuilder;
@@ -41,10 +36,10 @@ namespace _bson {
      * @throws MsgAssertionException if parsing fails.  The message included with
      * this assertion includes the character offset where parsing failed.
      */
-     bsonobj  fromjson(const std::string& str);
+     bsonobj  fromjson(const std::string& str, BSONObjBuilder& builder);
 
     /** @param len will be size of JSON object in text chars. */
-     bsonobj  fromjson(const char* str, int* len=NULL);
+     //bsonobj  fromjson(const char* str, int* len=NULL);
 
     /**
      * Parser class.  A bsonobj is constructed incrementally by passing a

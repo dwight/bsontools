@@ -9,12 +9,15 @@ namespace _bson {
     public:
 
         Status(ErrorCodes e, const std::string& str) : _code(e), s(str) { }
+        Status(ErrorCodes e, const std::string& str,int) : _code(e), s(str) { }
 
-        static Status OK();
-        bool isOK() const;
+        static Status OK() { return Status(Ok, ""); }
+        bool isOK() const { return _code == Ok; }
 
-        bool operator==(const Status&) const;
-        bool operator!=(const Status&) const;
+        bool operator==(const Status& rhs) const {
+            return _code == rhs._code;
+        }
+        bool operator!=(const Status& rhs) const { return _code != rhs._code;  }
 
         ErrorCodes code() const { return _code; }
 

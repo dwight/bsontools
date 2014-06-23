@@ -2,6 +2,7 @@
 
 #include "status_with.h"
 #include "cstdint.h"
+#include "string_data.h"
 
 namespace _bson { 
 
@@ -23,4 +24,3 @@ namespace _bson {
     StatusWith<Date_t> dateFromISOString(const StringData& dateString);
 
 }
-

@@ -2,16 +2,27 @@
 //
 
 #include <memory>
-
-//#include <stdio.h>
-//#include <tchar.h>
-
+#include <iostream>
 #include "../bson/json.h"
+#include "../bson/bsonobjbuilder.h"
+
+using namespace std;
+using namespace _bson;
 
 int main(int argc, char* argv[])
 {
-    auto x = 3;
-    std::shared_ptr<int> p;
-	return 0;
+
+    string s;
+    while (1) {
+        if (cin.eof())
+            break;
+        s.clear();
+        getline(cin, s);
+        BSONObjBuilder b;
+        bsonobj o = fromjson(s, b);
+        cout.write(o.objdata(), o.objsize());
+    }
+    
+    return 0;
 }
 

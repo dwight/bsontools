@@ -18,6 +18,7 @@
 #pragma once
 
 #include "time_support.h"
+#include "hex.h"
 
 namespace _bson {
 
@@ -71,7 +72,7 @@ namespace _bson {
         /** @return the random/sequential part of the object ID as 6 hex digits */
 
         /** sets the contents to a new oid / randomized value */
-        void init();
+        //void init();
 
         /** sets the contents to a new oid
          * guaranteed to be sequential
@@ -81,7 +82,14 @@ namespace _bson {
         void initSequential();
 
         /** init from a 24 char hex string */
-        void init( const std::string& s );
+        void init(const std::string& s) {
+            verify(s.size() == 24);
+            const char *p = s.c_str();
+            for (size_t i = 0; i < kOIDSize; i++) {
+                data[i] = fromHex(p);
+                p += 2;
+            }
+        }
 
         /** Set to the min/max OID that could be generated at given timestamp. */
         void init( Date_t date, bool max=false );

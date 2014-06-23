@@ -13,7 +13,7 @@
 *    limitations under the License.
 */
 
-#pragma once
+//#pragma once
 
 #include <map>
 #include <cmath>
@@ -58,7 +58,7 @@ namespace _bson {
 
     public:
         /** @param initsize this is just a hint as to the final size of the object */
-        BSONObjBuilder(int initsize = 512) : _b(_buf), _buf(initsize + sizeof(unsigned)), _offset(sizeof(unsigned)),_doneCalled(false) {
+        BSONObjBuilder(int initsize = 512) : _b(_buf), _buf(initsize + sizeof(unsigned)), _offset(0),_doneCalled(false) {
             _b.appendNum((unsigned)0); // ref-count
             _b.skip(4); /*leave room for size field and ref-count*/
         }
@@ -667,21 +667,15 @@ namespace _bson {
             _b.appendStr( fieldName );
             return *this;
         }
+#endif
 
-        // Append a Timestamp field -- will be updated to next OpTime on db insert.
-        BSONObjBuilder& appendTimestamp( const StringData& fieldName ) {
-            _b.appendNum( (char) Timestamp );
-            _b.appendStr( fieldName );
-            _b.appendNum( (unsigned long long) 0 );
-            return *this;
-        }
 
         /**
          * To store an OpTime in BSON, use this function.
          * This captures both the secs and inc fields.
          */
         BSONObjBuilder& append(const StringData& fieldName, OpTime optime);
-#endif
+
         /**
          * Alternative way to store an OpTime in BSON. Pass the OpTime as a Date, as follows:
          *
@@ -701,7 +695,7 @@ namespace _bson {
         Append a timestamp element to the object being ebuilt.
         @param time - in millis (but stored in seconds)
         */
-        BSONObjBuilder& appendTimestamp( const StringData& fieldName , unsigned long long time , unsigned int inc );
+        //BSONObjBuilder& appendTimestamp( const StringData& fieldName , unsigned long long time , unsigned int inc );
 #if 0
 
         BSONObjBuilder& append(const StringData& fieldName, OID oid) {

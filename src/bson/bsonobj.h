@@ -423,3 +423,5 @@ namespace _bson {
     };
 
 }
+
+#include "bson-inl.h"

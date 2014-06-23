@@ -23,7 +23,6 @@
 #include <sstream>
 #include <stdio.h>
 #include <string>
-
 #include "string_data.h"
 
 namespace _bson {
@@ -34,7 +33,7 @@ namespace _bson {
     */
     struct PackedDouble {
         double d;
-    } PACKED_DECL;
+    }; // PACKED_DECL;
 
     /* Note the limit here is rather arbitrary and is simply a standard. generally the code works
        with any object that fits in ram.
@@ -290,7 +289,7 @@ namespace _bson {
             const int prev = _buf.l;
             const int maxSize = 32; 
             char * start = _buf.grow( maxSize );
-            int z = snprintf( start , maxSize , "%.16g" , x );
+            int z = _snprintf_s( start , maxSize, maxSize , "%.16g" , x );
             verify( z >= 0 );
             verify( z < maxSize );
             _buf.l = prev + z;
