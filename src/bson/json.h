@@ -16,6 +16,7 @@
 #pragma once
 
 #include <string>
+#include <istream>
 
 namespace _bson {
     class Status;
@@ -36,7 +37,7 @@ namespace _bson {
      * @throws MsgAssertionException if parsing fails.  The message included with
      * this assertion includes the character offset where parsing failed.
      */
-     bsonobj  fromjson(const std::string& str, BSONObjBuilder& builder);
+     bsonobj fromjson(std::istream&, BSONObjBuilder& builder);
 
     /** @param len will be size of JSON object in text chars. */
      //bsonobj  fromjson(const char* str, int* len=NULL);
@@ -47,8 +48,12 @@ namespace _bson {
      * element parsed is described before each function.
      */
     class JParse {
-        public:
-            explicit JParse(const char*);
+        std::istream& _in;
+        unsigned long _offset;
+
+        std::string get(const char *chars_wanted);
+    public:
+        explicit JParse(std::istream&);
 
             /*
              * Notation: All-uppercase symbols denote non-terminals; all other
@@ -112,6 +117,9 @@ namespace _bson {
             _bson::Status object(const StringData& fieldName, BSONObjBuilder&, bool subObj=true);
 
         private:
+            bool eof() const { return _in.eof(); }
+            char getc() { return _in.get(); }
+            
             /* The following functions are called with the '{' and the first
              * field already parsed since they are both implied given the
              * context. */
@@ -351,6 +359,8 @@ namespace _bson {
              */
             inline bool peekToken(const char* token);
 
+            char peek();
+
             /**
              * @return true if the given token matches the next non whitespace
              * sequence in our buffer, and false if the token doesn't match or
@@ -365,7 +375,7 @@ namespace _bson {
              * we reach the end of our buffer.  Do not update the pointer to our
              * buffer if advance is false.
              */
-            bool readTokenImpl(const char* token, bool advance=true);
+            bool readTokenImpl(const char* token);
 
             /**
              * @return true if the next field in our stream matches field.
@@ -396,7 +406,7 @@ namespace _bson {
              */
             _bson::Status parseError(const StringData& msg);
         public:
-            inline int offset() { return (_input - _buf); }
+            inline int offset() { return _offset; }
 
         private:
             /*
@@ -410,9 +420,9 @@ namespace _bson {
              * byte at the end of the buffer because they are assuming a c-style
              * string.
              */
-            const char* const _buf;
-            const char* _input;
-            const char* const _input_end;
+            //const char* const _buf;
+            //const char* _input;
+            //const char* const _input_end;
     };
 
 } // namespace mongo

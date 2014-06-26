@@ -59,7 +59,6 @@ namespace _bson {
     public:
         /** @param initsize this is just a hint as to the final size of the object */
         BSONObjBuilder(int initsize = 512) : _b(_buf), _buf(initsize + sizeof(unsigned)), _offset(0),_doneCalled(false) {
-            _b.appendNum((unsigned)0); // ref-count
             _b.skip(4); /*leave room for size field and ref-count*/
         }
 

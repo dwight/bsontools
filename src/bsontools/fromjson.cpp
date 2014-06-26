@@ -12,14 +12,11 @@ using namespace _bson;
 int main(int argc, char* argv[])
 {
 
-    string s;
     while (1) {
         if (cin.eof())
             break;
-        s.clear();
-        getline(cin, s);
         BSONObjBuilder b;
-        bsonobj o = fromjson(s, b);
+        bsonobj o = fromjson(cin, b);
         cout.write(o.objdata(), o.objsize());
     }
     

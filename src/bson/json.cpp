@@ -20,20 +20,12 @@
 #include "errorcodes.h"
 #include "status.h"
 #include "base64.h"
-
-using namespace std;
-
 #include "bsonobjbuilder.h"
 #include "hex.h"
 #include "parse_number.h"
 
-/*
-#include "mongo/db/jsobj.h"
-#include "mongo/platform/cstdint.h"
-#include "mongo/platform/strtoll.h"
-#include "mongo/util/mongoutils/str.h"
-#include "mongo/util/time_support.h"
-*/
+using namespace std;
+
 namespace _bson {
 
     using std::ostringstream;
@@ -50,6 +42,8 @@ namespace _bson {
 #define DIGIT "0123456789"
 #define CONTROL "\a\b\f\n\r\t\v"
 #define JOPTIONS "gims"
+
+    const char *DigitsSigned = "0123456789-";
 
     // Size hints given to char vectors
     enum {
@@ -78,16 +72,16 @@ namespace _bson {
                  *SINGLEQUOTE = "'",
                  *DOUBLEQUOTE = "\"";
 
-    JParse::JParse(const char* str)
-        : _buf(str), _input(str), _input_end(str + strlen(str)) {}
+    JParse::JParse(istream& i) : _in(i), _offset(0) {}
+//        : _buf(str), _input(str), _input_end(str + strlen(str)) {}
 
     Status JParse::parseError(const StringData& msg) {
         std::ostringstream ossmsg;
         ossmsg << msg.toString();
         ossmsg << ": offset:";
         ossmsg << offset();
-        ossmsg << " of:";
-        ossmsg << _buf;
+//        ossmsg << " of:";
+//        ossmsg << _buf;
         return Status(ErrorCodes::FailedToParse, ossmsg.str());
     }
 
@@ -394,7 +388,6 @@ namespace _bson {
             return parseError("Expected ':'");
         }
         errno = 0;
-        char* endptr;
         Date_t date;
 
         if (peekToken(DOUBLEQUOTE)) {
@@ -443,10 +436,11 @@ namespace _bson {
         else {
             // SERVER-11920: We should use parseNumberFromString here, but that function requires
             // that we know ahead of time where the number ends, which is not currently the case.
-            date = static_cast<unsigned long long>(strtoll(_input, &endptr, 10));
-            if (_input == endptr) {
+            string s = get(DigitsSigned);
+            if (s.empty()) {
                 return parseError("Date expecting integer milliseconds");
             }
+            date = static_cast<unsigned long long>(strtoll(s.c_str(), NULL, 10));
             if (errno == ERANGE) {
                 /* Need to handle this because jsonString outputs the value of Date_t as unsigned.
                 * See SERVER-8330 and SERVER-8573 */
@@ -454,12 +448,11 @@ namespace _bson {
                 // SERVER-11920: We should use parseNumberFromString here, but that function
                 // requires that we know ahead of time where the number ends, which is not currently
                 // the case.
-                date = strtoull(_input, &endptr, 10);
+                date = strtoull(s.c_str(), NULL, 10);
                 if (errno == ERANGE) {
                     return parseError("Date milliseconds overflow");
                 }
             }
-            _input = endptr;
         }
         builder.appendDate(fieldName, date);
         return Status::OK();
@@ -483,21 +476,19 @@ namespace _bson {
             return parseError("Negative seconds in \"$timestamp\"");
         }
         errno = 0;
-        char* endptr;
         // SERVER-11920: We should use parseNumberFromString here, but that function requires that
         // we know ahead of time where the number ends, which is not currently the case.
-        uint32_t seconds = strtoul(_input, &endptr, 10);
+        string s = get(DIGIT);
+        if (s.empty()) {
+            return parseError("Expecting unsigned integer seconds in \"$timestamp\"");
+        }
+        uint32_t seconds = strtoul(s.c_str(), NULL, 10);
         if (errno == ERANGE) {
             return parseError("Timestamp seconds overflow");
         }
-        if (_input == endptr) {
-            return parseError("Expecting unsigned integer seconds in \"$timestamp\"");
-        }
-        _input = endptr;
         if (!readToken(COMMA)) {
             return parseError("Expecting ','");
         }
-
         if (!readField("i")) {
             return parseError("Expected field name \"i\" in \"$timestamp\" sub object");
         }
@@ -510,15 +501,14 @@ namespace _bson {
         errno = 0;
         // SERVER-11920: We should use parseNumberFromString here, but that function requires that
         // we know ahead of time where the number ends, which is not currently the case.
-        uint32_t count = strtoul(_input, &endptr, 10);
+        s = get(DIGIT);
+        if (s.empty()) {
+            return parseError("Expecting unsigned integer increment in \"$timestamp\"");
+        }
+        uint32_t count = strtoul(s.c_str(), NULL, 10);
         if (errno == ERANGE) {
             return parseError("Timestamp increment overflow");
         }
-        if (_input == endptr) {
-            return parseError("Expecting unsigned integer increment in \"$timestamp\"");
-        }
-        _input = endptr;
-
         if (!readToken(RBRACE)) {
             return parseError("Expecting '}'");
         }
@@ -689,25 +679,26 @@ namespace _bson {
             return parseError("Expecting '('");
         }
         errno = 0;
-        char* endptr;
+
         // SERVER-11920: We should use parseNumberFromString here, but that function requires that
         // we know ahead of time where the number ends, which is not currently the case.
-        Date_t date = static_cast<unsigned long long>(strtoll(_input, &endptr, 10));
-        if (_input == endptr) {
+        string s = get(DigitsSigned);
+
+        if (s.empty()) {
             return parseError("Date expecting integer milliseconds");
         }
+        Date_t date = static_cast<unsigned long long>(strtoll(s.c_str(), NULL, 10));
         if (errno == ERANGE) {
             /* Need to handle this because jsonString outputs the value of Date_t as unsigned.
             * See SERVER-8330 and SERVER-8573 */
             errno = 0;
             // SERVER-11920: We should use parseNumberFromString here, but that function requires
             // that we know ahead of time where the number ends, which is not currently the case.
-            date = strtoull(_input, &endptr, 10);
+            date = strtoull(s.c_str(), NULL, 10);
             if (errno == ERANGE) {
                 return parseError("Date milliseconds overflow");
             }
         }
-        _input = endptr;
         if (!readToken(RPAREN)) {
             return parseError("Expecting ')'");
         }
@@ -723,17 +714,16 @@ namespace _bson {
             return parseError("Negative seconds in \"$timestamp\"");
         }
         errno = 0;
-        char* endptr;
         // SERVER-11920: We should use parseNumberFromString here, but that function requires that
         // we know ahead of time where the number ends, which is not currently the case.
-        uint32_t seconds = strtoul(_input, &endptr, 10);
+        string s = get(DIGIT);
+        if (s.empty()) {
+            return parseError("Expecting unsigned integer seconds in \"$timestamp\"");
+        }
+        uint32_t seconds = strtoul(s.c_str(), NULL, 10);
         if (errno == ERANGE) {
             return parseError("Timestamp seconds overflow");
         }
-        if (_input == endptr) {
-            return parseError("Expecting unsigned integer seconds in \"$timestamp\"");
-        }
-        _input = endptr;
         if (!readToken(COMMA)) {
             return parseError("Expecting ','");
         }
@@ -743,14 +733,14 @@ namespace _bson {
         errno = 0;
         // SERVER-11920: We should use parseNumberFromString here, but that function requires that
         // we know ahead of time where the number ends, which is not currently the case.
-        uint32_t count = strtoul(_input, &endptr, 10);
+        s = get(DIGIT);
+        if (s.empty()) {
+            return parseError("Expecting unsigned integer increment in \"$timestamp\"");
+        }
+        uint32_t count = strtoul(s.c_str(), NULL, 10);
         if (errno == ERANGE) {
             return parseError("Timestamp increment overflow");
         }
-        if (_input == endptr) {
-            return parseError("Expecting unsigned integer increment in \"$timestamp\"");
-        }
-        _input = endptr;
         if (!readToken(RPAREN)) {
             return parseError("Expecting ')'");
         }
@@ -787,17 +777,16 @@ namespace _bson {
             return parseError("Expecting '('");
         }
         errno = 0;
-        char* endptr;
         // SERVER-11920: We should use parseNumberFromString here, but that function requires that
         // we know ahead of time where the number ends, which is not currently the case.
-        int64_t val = strtoll(_input, &endptr, 10);
+        string s = get(DigitsSigned);
+        if (s.empty()) {
+            return parseError("Expecting number in NumberLong");
+        }
+        int64_t val = strtoll(s.c_str(), NULL, 10);
         if (errno == ERANGE) {
             return parseError("NumberLong out of range");
         }
-        if (_input == endptr) {
-            return parseError("Expecting number in NumberLong");
-        }
-        _input = endptr;
         if (!readToken(RPAREN)) {
             return parseError("Expecting ')'");
         }
@@ -810,17 +799,16 @@ namespace _bson {
             return parseError("Expecting '('");
         }
         errno = 0;
-        char* endptr;
         // SERVER-11920: We should use parseNumberFromString here, but that function requires that
         // we know ahead of time where the number ends, which is not currently the case.
-        int32_t val = strtol(_input, &endptr, 10);
+        string s = get(DigitsSigned);
+        if (s.empty()) {
+            return parseError("Expecting unsigned number in NumberInt");
+        }
+        int32_t val = strtol(s.c_str(), NULL, 10);
         if (errno == ERANGE) {
             return parseError("NumberInt out of range");
         }
-        if (_input == endptr) {
-            return parseError("Expecting unsigned number in NumberInt");
-        }
-        _input = endptr;
         if (!readToken(RPAREN)) {
             return parseError("Expecting ')'");
         }
@@ -919,8 +907,6 @@ namespace _bson {
     }
 
     Status JParse::number(const StringData& fieldName, BSONObjBuilder& builder) {
-        char* endptrll;
-        char* endptrd;
         long long retll;
         double retd;
 
@@ -928,11 +914,11 @@ namespace _bson {
         errno = 0;
         // SERVER-11920: We should use parseNumberFromString here, but that function requires that
         // we know ahead of time where the number ends, which is not currently the case.
-        retd = strtod(_input, &endptrd);
-        // if pointer does not move, we found no digits
-        if (_input == endptrd) {
+        string s = get("0123456789-+Ee.");
+        if (s.empty()) {
             return parseError("Bad characters in value");
         }
+        retd = strtod(s.c_str(), NULL);
         if (errno == ERANGE) {
             return parseError("Value cannot fit in double");
         }
@@ -940,8 +926,8 @@ namespace _bson {
         errno = 0;
         // SERVER-11920: We should use parseNumberFromString here, but that function requires that
         // we know ahead of time where the number ends, which is not currently the case.
-        retll = strtoll(_input, &endptrll, 10);
-        if (endptrll < endptrd || errno == ERANGE) {
+        retll = strtoll(s.c_str(), NULL, 10);
+        if (errno == ERANGE) {
             // The number either had characters only meaningful for a double or
             // could not fit in a 64 bit int
             MONGO_JSON_DEBUG("Type: double");
@@ -956,10 +942,6 @@ namespace _bson {
             // The number can fit in a 64 bit int
             MONGO_JSON_DEBUG("Type: 64 bit int");
             builder.append(fieldName, retll);
-        }
-        _input = endptrd;
-        if (_input >= _input_end) {
-            return parseError("Trailing number at end of input");
         }
         return Status::OK();
     }
@@ -976,14 +958,14 @@ namespace _bson {
             // 'isspace()' takes an 'int' (signed), so (default signed) 'char's get sign-extended
             // and therefore 'corrupted' unless we force them to be unsigned ... 0x80 becomes
             // 0xffffff80 as seen by isspace when sign-extended ... we want it to be 0x00000080
-            while (_input < _input_end &&
-                   isspace(*reinterpret_cast<const unsigned char*>(_input))) {
-                ++_input;
+            while (!_in.eof() &&
+                   isspace(*reinterpret_cast<const unsigned char*>(_in.peek()))) {
+                _in.get();
             }
-            if (_input >= _input_end) {
+            if (_in.eof()) {
                 return parseError("Field name expected");
             }
-            if (!match(*_input, ALPHA "_$")) {
+            if (!match(peek(), ALPHA "_$")) {
                 return parseError("First character in field must be [A-Za-z$_]");
             }
             return chars(result, "", ALPHA DIGIT "_$");
@@ -1023,23 +1005,28 @@ namespace _bson {
     Status JParse::chars(std::string* result, const char* terminalSet,
             const char* allowedSet) {
         MONGO_JSON_DEBUG("terminalSet: " << terminalSet);
-        if (_input >= _input_end) {
+        if (eof()) {
             return parseError("Unexpected end of input");
         }
-        const char* q = _input;
-        while (q < _input_end && !match(*q, terminalSet)) {
-            MONGO_JSON_DEBUG("q: " << q);
+        while (1) {
+            if (eof())
+                break;
+            char ch = peek();
+            if (match(ch, terminalSet))
+                break;
+            MONGO_JSON_DEBUG("q: " << ch);
             if (allowedSet != NULL) {
-                if (!match(*q, allowedSet)) {
-                    _input = q;
+                if (!match(ch, allowedSet)) {
                     return Status::OK();
                 }
             }
-            if (0x00 <= *q && *q <= 0x1F) {
+            if (0x00 <= ch && ch <= 0x1F) {
                 return parseError("Invalid control character");
             }
-            if (*q == '\\' && q + 1 < _input_end) {
-                switch (*(++q)) {
+            getc();
+            if (ch == '\\' && !eof()) {
+                ch = peek();
+                switch (ch) {
                     // Escape characters allowed by the JSON spec
                     case '"':  result->push_back('"');  break;
                     case '\'': result->push_back('\''); break;
@@ -1051,25 +1038,24 @@ namespace _bson {
                     case 'r':  result->push_back('\r'); break;
                     case 't':  result->push_back('\t'); break;
                     case 'u': { //expect 4 hexdigits
-                                  // TODO: handle UTF-16 surrogate characters
-                                  ++q;
-                                  if (q + 4 >= _input_end) {
-                                      return parseError("Expecting 4 hex digits");
-                                  }
-                                  if (!isHexString(StringData(q, 4))) {
-                                      return parseError("Expecting 4 hex digits");
-                                  }
-                                  unsigned char first = fromHex(q);
-                                  unsigned char second = fromHex(q += 2);
-                                  const std::string& utf8str = encodeUTF8(first, second);
-                                  for (unsigned int i = 0; i < utf8str.size(); i++) {
-                                      result->push_back(utf8str[i]);
-                                  }
-                                  ++q;
-                                  break;
-                              }
-                               // Vertical tab character.  Not in JSON spec but allowed in
-                               // our implementation according to test suite.
+                        // TODO: handle UTF-16 surrogate characters
+                        getc();
+                        stringstream ss;
+                        ss << getc() << getc() << getc() << peek();
+                        string s = ss.str();
+                            if (!isHexString(s)) {
+                                return parseError("Expecting 4 hex digits");
+                            }
+                            unsigned char first = fromHex(s);
+                            unsigned char second = fromHex(s.c_str() + 2);
+                            const std::string& utf8str = encodeUTF8(first, second);
+                            for (unsigned int i = 0; i < utf8str.size(); i++) {
+                                result->push_back(utf8str[i]);
+                            }
+                            break;
+                        }
+                    // Vertical tab character.  Not in JSON spec but allowed in
+                    // our implementation according to test suite.
                     case 'v':  result->push_back('\v'); break;
                                // Escape characters we explicity disallow
                     case 'x':  return parseError("Hex escape not supported");
@@ -1082,17 +1068,16 @@ namespace _bson {
                     case '6':
                     case '7':  return parseError("Octal escape not supported");
                                // By default pass on the unescaped character
-                    default:   result->push_back(*q); break;
+                    default:   result->push_back(ch); break;
                     // TODO: check for escaped control characters
                 }
-                ++q;
+                getc();
             }
             else {
-                result->push_back(*q++);
+                result->push_back(ch); getc();
             }
         }
-        if (q < _input_end) {
-            _input = q;
+        if (!eof()) {
             return Status::OK();
         }
         return parseError("Unexpected end of input");
@@ -1116,34 +1101,50 @@ namespace _bson {
     }
 
     inline bool JParse::peekToken(const char* token) {
-        return readTokenImpl(token, false);
+        assert(*token);
+        assert(token[1] == 0);
+        return peek() == *token;
     }
 
     inline bool JParse::readToken(const char* token) {
-        return readTokenImpl(token, true);
+        return readTokenImpl(token);
     }
 
-    bool JParse::readTokenImpl(const char* token, bool advance) {
+    string JParse::get(const char *chars_wanted) { 
+        StringBuilder b;
+        while (1) {
+            char ch = peek();
+            if (strchr(chars_wanted, ch) == 0)
+                break;
+            b << ch;
+        }
+        return b.str();
+    }
+
+    char JParse::peek() { 
+        return _in.peek();
+    }
+
+    bool JParse::readTokenImpl(const char* token) {
         MONGO_JSON_DEBUG("token: " << token);
-        const char* check = _input;
         if (token == NULL) {
             return false;
         }
         // 'isspace()' takes an 'int' (signed), so (default signed) 'char's get sign-extended
         // and therefore 'corrupted' unless we force them to be unsigned ... 0x80 becomes
         // 0xffffff80 as seen by isspace when sign-extended ... we want it to be 0x00000080
-        while (check < _input_end && isspace(*reinterpret_cast<const unsigned char*>(check))) {
-            ++check;
+
+        while (!eof() && isspace(*reinterpret_cast<const unsigned char*>(peek()))) {
+            getc();
         }
         while (*token != '\0') {
-            if (check >= _input_end) {
+            if (eof()) {
                 return false;
             }
-            if (*token++ != *check++) {
+            if (*token++ != getc()) {
                 return false;
             }
         }
-        if (advance) { _input = check; }
         return true;
     }
 
@@ -1193,13 +1194,11 @@ namespace _bson {
         return true;
     }
 
-    bsonobj fromjson(const char* jsonString, BSONObjBuilder& builder) {
-        MONGO_JSON_DEBUG("jsonString: " << jsonString);
-        if (jsonString[0] == '\0') {
-            //if (len) *len = 0;
+    bsonobj fromjson(std::istream& i, BSONObjBuilder& builder) {
+        if (i.eof()) {
             return bsonobj();
         }
-        JParse jparse(jsonString);
+        JParse jparse(i);
         Status ret = Status::OK();
         try {
             ret = jparse.object("UNUSED", builder, false);
@@ -1218,9 +1217,9 @@ namespace _bson {
         //if (len) *len = jparse.offset();
         return builder.obj();
     }
-
+    /*
     bsonobj fromjson(const std::string& str, BSONObjBuilder& b) {
         return fromjson( str.c_str(), b );
-    }
+    }*/
 
 }  /* namespace mongo */
