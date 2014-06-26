@@ -31,6 +31,9 @@ namespace _bson {
     using std::ostringstream;
     using std::string;
 
+    unsigned long long line = 1;
+    unsigned long long doc_number = 1;
+
 #if 0
 #define MONGO_JSON_DEBUG(message) log() << "JSON DEBUG @ " << __FILE__\
     << ":" << __LINE__ << " " << __FUNCTION__ << ": " << message << endl;
@@ -78,15 +81,18 @@ namespace _bson {
     Status JParse::parseError(const StringData& msg) {
         std::ostringstream ossmsg;
         ossmsg << msg.toString();
-        ossmsg << ": offset:";
-        ossmsg << offset();
-//        ossmsg << " of:";
-//        ossmsg << _buf;
+        ossmsg << " line:" << line;
+        ossmsg << ", file_offset:" << offset() << ", doc_number:" << doc_number;
         return Status(ErrorCodes::FailedToParse, ossmsg.str());
+    }
+
+    Status JParse::err() { 
+        return parseError("can't parse");
     }
 
     Status JParse::value(const StringData& fieldName, BSONObjBuilder& builder) {
         MONGO_JSON_DEBUG("fieldName: " << fieldName);
+        char ch = peek();
         if (peekToken(LBRACE)) {
             Status ret = object(fieldName, builder);
             if (ret != Status::OK()) {
@@ -99,43 +105,70 @@ namespace _bson {
                 return ret;
             }
         }
-        else if (readToken("new")) {
-            Status ret = constructor(fieldName, builder);
-            if (ret != Status::OK()) {
-                return ret;
+        else if (ch == 'n') {
+            getc();
+            if (peek() == 'e' && readToken("ew")) {
+                Status ret = constructor(fieldName, builder);
+                if (ret != Status::OK()) {
+                    return ret;
+                }
             }
-        }
-        else if (readToken("Date")) {
-            Status ret = date(fieldName, builder);
-            if (ret != Status::OK()) {
-                return ret;
+            else if (peek() == 'u' && readToken("ull")) {
+                builder.appendNull(fieldName);
             }
+            else
+                return err();
         }
-        else if (readToken("Timestamp")) {
-            Status ret = timestamp(fieldName, builder);
-            if (ret != Status::OK()) {
-                return ret;
+        else if (ch == 'D') {
+            if (readToken("Date")) {
+                Status ret = date(fieldName, builder);
+                if (ret != Status::OK()) {
+                    return ret;
+                }
             }
+            else
+                return err();
         }
-        else if (readToken("ObjectId")) {
-            Status ret = objectId(fieldName, builder);
-            if (ret != Status::OK()) {
-                return ret;
+        else if (ch == 'T') {
+            if (readToken("Timestamp")) {
+                Status ret = timestamp(fieldName, builder);
+                if (ret != Status::OK()) {
+                    return ret;
+                }
             }
+            else
+                return err();
         }
-        else if (readToken("NumberLong")) {
-            Status ret = numberLong(fieldName, builder);
-            if (ret != Status::OK()) {
-                return ret;
+        else if (ch == 'O') {
+            if (readToken("ObjectId")) {
+                Status ret = objectId(fieldName, builder);
+                if (ret != Status::OK()) {
+                    return ret;
+                }
             }
+            else
+                return err();
         }
-        else if (readToken("NumberInt")) {
-            Status ret = numberInt(fieldName, builder);
-            if (ret != Status::OK()) {
-                return ret;
+        else if (ch == 'N') {
+            if (readToken("NaN")) {
+                builder.append(fieldName, std::numeric_limits<double>::quiet_NaN());
             }
+            else if (readToken("NumberLong")) {
+                Status ret = numberLong(fieldName, builder);
+                if (ret != Status::OK()) {
+                    return ret;
+                }
+            }
+            else if (readToken("NumberInt")) {
+                Status ret = numberInt(fieldName, builder);
+                if (ret != Status::OK()) {
+                    return ret;
+                }
+            }
+            else
+                return err();
         }
-        else if (readToken("Dbref") || readToken("DBRef")) {
+        else if (ch == 'D' && readToken("DBRef")) {
             Status ret = dbRef(fieldName, builder);
             if (ret != Status::OK()) {
                 return ret;
@@ -156,25 +189,19 @@ namespace _bson {
             }
             builder.append(fieldName, valueString);
         }
-        else if (readToken("true")) {
+        else if (ch == 't' && readToken("true")) {
             builder.append(fieldName, true);
         }
-        else if (readToken("false")) {
+        else if (ch == 'f' && readToken("false")) {
             builder.append(fieldName, false);
         }
-        else if (readToken("null")) {
-            builder.appendNull(fieldName);
-        }
-        else if (readToken("undefined")) {
+        else if (ch == 'u' && readToken("undefined")) {
             builder.appendUndefined(fieldName);
         }
-        else if (readToken("NaN")) {
-            builder.append(fieldName, std::numeric_limits<double>::quiet_NaN());
-        }
-        else if (readToken("Infinity")) {
+        else if (ch== 'I' && readToken("Infinity")) {
             builder.append(fieldName, std::numeric_limits<double>::infinity());
         }
-        else if (readToken("-Infinity")) {
+        else if (ch == '-' && readToken("-Infinity")) {
             builder.append(fieldName, -std::numeric_limits<double>::infinity());
         }
         else {
@@ -189,11 +216,12 @@ namespace _bson {
     Status JParse::object(const StringData& fieldName, BSONObjBuilder& builder, bool subObject) {
         MONGO_JSON_DEBUG("fieldName: " << fieldName);
         if (!readToken(LBRACE)) {
-            return parseError("Expecting '{'");
+            return parseError("Expected '{'");
         }
 
         // Empty object
-        if (readToken(RBRACE)) {
+        if (peekToken(RBRACE)) {
+            readToken(RBRACE);
             if (subObject) {
                 BSONObjBuilder empty(builder.subobjStart(fieldName));
                 empty.obj();
@@ -209,79 +237,92 @@ namespace _bson {
             return ret;
         }
 
-        if (firstField == "$oid") {
-            if (!subObject) {
-                return parseError("Reserved field name in base object: $oid");
+        bool reserved = false;
+
+        if (*firstField.c_str() == '$') {
+            if (firstField == "$oid") {
+                reserved = true;
+                if (!subObject) {
+                    return parseError("Reserved field name in base object: $oid");
+                }
+                Status ret = objectIdObject(fieldName, builder);
+                if (ret != Status::OK()) {
+                    return ret;
+                }
             }
-            Status ret = objectIdObject(fieldName, builder);
-            if (ret != Status::OK()) {
-                return ret;
+            else if (firstField == "$binary") {
+                reserved = true;
+                if (!subObject) {
+                    return parseError("Reserved field name in base object: $binary");
+                }
+                Status ret = binaryObject(fieldName, builder);
+                if (ret != Status::OK()) {
+                    return ret;
+                }
+            }
+            else if (firstField == "$date") {
+                reserved = true;
+                if (!subObject) {
+                    return parseError("Reserved field name in base object: $date");
+                }
+                Status ret = dateObject(fieldName, builder);
+                if (ret != Status::OK()) {
+                    return ret;
+                }
+            }
+            else if (firstField == "$timestamp") {
+                reserved = true;
+                if (!subObject) {
+                    return parseError("Reserved field name in base object: $timestamp");
+                }
+                Status ret = timestampObject(fieldName, builder);
+                if (ret != Status::OK()) {
+                    return ret;
+                }
+            }
+            else if (firstField == "$regex") {
+                reserved = true;
+                if (!subObject) {
+                    return parseError("Reserved field name in base object: $regex");
+                }
+                Status ret = regexObject(fieldName, builder);
+                if (ret != Status::OK()) {
+                    return ret;
+                }
+            }
+            else if (firstField == "$ref") {
+                reserved = true;
+                if (!subObject) {
+                    return parseError("Reserved field name in base object: $ref");
+                }
+                Status ret = dbRefObject(fieldName, builder);
+                if (ret != Status::OK()) {
+                    return ret;
+                }
+            }
+            else if (firstField == "$undefined") {
+                reserved = true;
+                if (!subObject) {
+                    return parseError("Reserved field name in base object: $undefined");
+                }
+                Status ret = undefinedObject(fieldName, builder);
+                if (ret != Status::OK()) {
+                    return ret;
+                }
+            }
+            else if (firstField == "$numberLong") {
+                reserved = true;
+                if (!subObject) {
+                    return parseError("Reserved field name in base object: $numberLong");
+                }
+                Status ret = numberLongObject(fieldName, builder);
+                if (ret != Status::OK()) {
+                    return ret;
+                }
             }
         }
-        else if (firstField == "$binary") {
-            if (!subObject) {
-                return parseError("Reserved field name in base object: $binary");
-            }
-            Status ret = binaryObject(fieldName, builder);
-            if (ret != Status::OK()) {
-                return ret;
-            }
-        }
-        else if (firstField == "$date") {
-            if (!subObject) {
-                return parseError("Reserved field name in base object: $date");
-            }
-            Status ret = dateObject(fieldName, builder);
-            if (ret != Status::OK()) {
-                return ret;
-            }
-        }
-        else if (firstField == "$timestamp") {
-            if (!subObject) {
-                return parseError("Reserved field name in base object: $timestamp");
-            }
-            Status ret = timestampObject(fieldName, builder);
-            if (ret != Status::OK()) {
-                return ret;
-            }
-        }
-        else if (firstField == "$regex") {
-            if (!subObject) {
-                return parseError("Reserved field name in base object: $regex");
-            }
-            Status ret = regexObject(fieldName, builder);
-            if (ret != Status::OK()) {
-                return ret;
-            }
-        }
-        else if (firstField == "$ref") {
-            if (!subObject) {
-                return parseError("Reserved field name in base object: $ref");
-            }
-            Status ret = dbRefObject(fieldName, builder);
-            if (ret != Status::OK()) {
-                return ret;
-            }
-        }
-        else if (firstField == "$undefined") {
-            if (!subObject) {
-                return parseError("Reserved field name in base object: $undefined");
-            }
-            Status ret = undefinedObject(fieldName, builder);
-            if (ret != Status::OK()) {
-                return ret;
-            }
-        }
-        else if (firstField == "$numberLong") {
-            if (!subObject) {
-                return parseError("Reserved field name in base object: $numberLong");
-            }
-            Status ret = numberLongObject(fieldName, builder);
-            if (ret != Status::OK()) {
-                return ret;
-            }
-        }
-        else { // firstField != <reserved field name>
+
+        if(!reserved) { // firstField != <reserved field name>
             // Normal object
 
             // Only create a sub builder if this is not the base object
@@ -293,13 +334,14 @@ namespace _bson {
             }
 
             if (!readToken(COLON)) {
-                return parseError("Expecting ':'");
+                return parseError("Expected ':'");
             }
             Status valueRet = value(firstField, *objBuilder);
             if (valueRet != Status::OK()) {
                 return valueRet;
             }
-            while (readToken(COMMA)) {
+            while (peekToken(COMMA)) {
+                readToken(COMMA);
                 std::string fieldName;
                 fieldName.reserve(FIELD_RESERVE_SIZE);
                 Status fieldRet = field(&fieldName);
@@ -307,7 +349,7 @@ namespace _bson {
                     return fieldRet;
                 }
                 if (!readToken(COLON)) {
-                    return parseError("Expecting ':'");
+                    return parseError("Expected ':'");
                 }
                 Status valueRet = value(fieldName, *objBuilder);
                 if (valueRet != Status::OK()) {
@@ -316,7 +358,7 @@ namespace _bson {
             }
         }
         if (!readToken(RBRACE)) {
-            return parseError("Expecting '}' or ','");
+            return parseError("Expected '}' or ','");
         }
         return Status::OK();
     }
@@ -332,10 +374,10 @@ namespace _bson {
             return ret;
         }
         if (id.size() != 24) {
-            return parseError("Expecting 24 hex digits: " + id);
+            return parseError("Expected 24 hex digits: " + id);
         }
         if (!isHexString(id)) {
-            return parseError("Expecting hex digits: " + id);
+            return parseError("Expected hex digits: " + id);
         }
         builder.append(fieldName, OID(id));
         return Status::OK();
@@ -414,7 +456,7 @@ namespace _bson {
                 return parseError("Expected field name: $numberLong for $date value object");
             }
             if (!readToken(COLON)) {
-                return parseError("Expecting ':'");
+                return parseError("Expected ':'");
             }
 
             // The number must be a quoted string, since large long numbers could overflow a double
@@ -460,17 +502,17 @@ namespace _bson {
 
     Status JParse::timestampObject(const StringData& fieldName, BSONObjBuilder& builder) {
         if (!readToken(COLON)) {
-            return parseError("Expecting ':'");
+            return parseError("Expected ':'");
         }
         if (!readToken(LBRACE)) {
-            return parseError("Expecting '{' to start \"$timestamp\" object");
+            return parseError("Expected '{' to start \"$timestamp\" object");
         }
 
         if (!readField("t")) {
             return parseError("Expected field name \"t\" in \"$timestamp\" sub object");
         }
         if (!readToken(COLON)) {
-            return parseError("Expecting ':'");
+            return parseError("Expected ':'");
         }
         if (readToken("-")) {
             return parseError("Negative seconds in \"$timestamp\"");
@@ -480,20 +522,20 @@ namespace _bson {
         // we know ahead of time where the number ends, which is not currently the case.
         string s = get(DIGIT);
         if (s.empty()) {
-            return parseError("Expecting unsigned integer seconds in \"$timestamp\"");
+            return parseError("Expected unsigned integer seconds in \"$timestamp\"");
         }
         uint32_t seconds = strtoul(s.c_str(), NULL, 10);
         if (errno == ERANGE) {
             return parseError("Timestamp seconds overflow");
         }
         if (!readToken(COMMA)) {
-            return parseError("Expecting ','");
+            return parseError("Expected ','");
         }
         if (!readField("i")) {
             return parseError("Expected field name \"i\" in \"$timestamp\" sub object");
         }
         if (!readToken(COLON)) {
-            return parseError("Expecting ':'");
+            return parseError("Expected ':'");
         }
         if (readToken("-")) {
             return parseError("Negative increment in \"$timestamp\"");
@@ -503,14 +545,14 @@ namespace _bson {
         // we know ahead of time where the number ends, which is not currently the case.
         s = get(DIGIT);
         if (s.empty()) {
-            return parseError("Expecting unsigned integer increment in \"$timestamp\"");
+            return parseError("Expected unsigned integer increment in \"$timestamp\"");
         }
         uint32_t count = strtoul(s.c_str(), NULL, 10);
         if (errno == ERANGE) {
             return parseError("Timestamp increment overflow");
         }
         if (!readToken(RBRACE)) {
-            return parseError("Expecting '}'");
+            return parseError("Expected '}'");
         }
         assert(false);
         //builder.appendTimestamp(fieldName, (static_cast<uint64_t>(seconds))*1000, count);
@@ -519,7 +561,7 @@ namespace _bson {
 
     Status JParse::regexObject(const StringData& fieldName, BSONObjBuilder& builder) {
         if (!readToken(COLON)) {
-            return parseError("Expecting ':'");
+            return parseError("Expected ':'");
         }
         std::string pat;
         pat.reserve(PAT_RESERVE_SIZE);
@@ -532,7 +574,7 @@ namespace _bson {
                 return parseError("Expected field name: \"$options\" in \"$regex\" object");
             }
             if (!readToken(COLON)) {
-                return parseError("Expecting ':'");
+                return parseError("Expected ':'");
             }
             std::string opt;
             opt.reserve(OPT_RESERVE_SIZE);
@@ -557,7 +599,7 @@ namespace _bson {
         BSONObjBuilder subBuilder(builder.subobjStart(fieldName));
 
         if (!readToken(COLON)) {
-            return parseError("DBRef: Expecting ':'");
+            return parseError("DBRef: Expected ':'");
         }
         std::string ns;
         ns.reserve(NS_RESERVE_SIZE);
@@ -568,14 +610,14 @@ namespace _bson {
         subBuilder.append("$ref", ns);
 
         if (!readToken(COMMA)) {
-            return parseError("DBRef: Expecting ','");
+            return parseError("DBRef: Expected ','");
         }
 
         if (!readField("$id")) {
             return parseError("DBRef: Expected field name: \"$id\" in \"$ref\" object");
         }
         if (!readToken(COLON)) {
-            return parseError("DBRef: Expecting ':'");
+            return parseError("DBRef: Expected ':'");
         }
         Status valueRet = value("$id", subBuilder);
         if (valueRet != Status::OK()) {
@@ -587,7 +629,7 @@ namespace _bson {
                 return parseError("DBRef: Expected field name: \"$db\" in \"$ref\" object");
             }
             if (!readToken(COLON)) {
-                return parseError("DBRef: Expecting ':'");
+                return parseError("DBRef: Expected ':'");
             }
             std::string db;
             db.reserve(DB_RESERVE_SIZE);
@@ -604,7 +646,7 @@ namespace _bson {
 
     Status JParse::undefinedObject(const StringData& fieldName, BSONObjBuilder& builder) {
         if (!readToken(COLON)) {
-            return parseError("Expecting ':'");
+            return parseError("Expected ':'");
         }
         if (!readToken("true")) {
             return parseError("Reserved field \"$undefined\" requires value of true");
@@ -615,7 +657,7 @@ namespace _bson {
 
     Status JParse::numberLongObject(const StringData& fieldName, BSONObjBuilder& builder) {
         if (!readToken(COLON)) {
-            return parseError("Expecting ':'");
+            return parseError("Expected ':'");
         }
 
         // The number must be a quoted string, since large long numbers could overflow a double and
@@ -641,7 +683,7 @@ namespace _bson {
         MONGO_JSON_DEBUG("fieldName: " << fieldName);
         uint32_t index(0);
         if (!readToken(LBRACKET)) {
-            return parseError("Expecting '['");
+            return parseError("Expected '['");
         }
         BSONObjBuilder subBuilder(builder.subarrayStart(fieldName));
         if (!peekToken(RBRACKET)) {
@@ -655,7 +697,7 @@ namespace _bson {
         }
         subBuilder.obj();
         if (!readToken(RBRACKET)) {
-            return parseError("Expecting ']' or ','");
+            return parseError("Expected ']' or ','");
         }
         return Status::OK();
     }
@@ -676,7 +718,7 @@ namespace _bson {
 
     Status JParse::date(const StringData& fieldName, BSONObjBuilder& builder) {
         if (!readToken(LPAREN)) {
-            return parseError("Expecting '('");
+            return parseError("Expected '('");
         }
         errno = 0;
 
@@ -700,7 +742,7 @@ namespace _bson {
             }
         }
         if (!readToken(RPAREN)) {
-            return parseError("Expecting ')'");
+            return parseError("Expected ')'");
         }
         builder.appendDate(fieldName, date);
         return Status::OK();
@@ -708,7 +750,7 @@ namespace _bson {
 
     Status JParse::timestamp(const StringData& fieldName, BSONObjBuilder& builder) {
         if (!readToken(LPAREN)) {
-            return parseError("Expecting '('");
+            return parseError("Expected '('");
         }
         if (readToken("-")) {
             return parseError("Negative seconds in \"$timestamp\"");
@@ -718,14 +760,14 @@ namespace _bson {
         // we know ahead of time where the number ends, which is not currently the case.
         string s = get(DIGIT);
         if (s.empty()) {
-            return parseError("Expecting unsigned integer seconds in \"$timestamp\"");
+            return parseError("Expected unsigned integer seconds in \"$timestamp\"");
         }
         uint32_t seconds = strtoul(s.c_str(), NULL, 10);
         if (errno == ERANGE) {
             return parseError("Timestamp seconds overflow");
         }
         if (!readToken(COMMA)) {
-            return parseError("Expecting ','");
+            return parseError("Expected ','");
         }
         if (readToken("-")) {
             return parseError("Negative seconds in \"$timestamp\"");
@@ -735,14 +777,14 @@ namespace _bson {
         // we know ahead of time where the number ends, which is not currently the case.
         s = get(DIGIT);
         if (s.empty()) {
-            return parseError("Expecting unsigned integer increment in \"$timestamp\"");
+            return parseError("Expected unsigned integer increment in \"$timestamp\"");
         }
         uint32_t count = strtoul(s.c_str(), NULL, 10);
         if (errno == ERANGE) {
             return parseError("Timestamp increment overflow");
         }
         if (!readToken(RPAREN)) {
-            return parseError("Expecting ')'");
+            return parseError("Expected ')'");
         }
         assert(false);
         //builder.appendTimestamp(fieldName, (static_cast<uint64_t>(seconds)) * 1000, count);
@@ -751,7 +793,7 @@ namespace _bson {
 
     Status JParse::objectId(const StringData& fieldName, BSONObjBuilder& builder) {
         if (!readToken(LPAREN)) {
-            return parseError("Expecting '('");
+            return parseError("Expected '('");
         }
         std::string id;
         id.reserve(ID_RESERVE_SIZE);
@@ -760,13 +802,13 @@ namespace _bson {
             return ret;
         }
         if (!readToken(RPAREN)) {
-            return parseError("Expecting ')'");
+            return parseError("Expected ')'");
         }
         if (id.size() != 24) {
-            return parseError("Expecting 24 hex digits: " + id);
+            return parseError("Expected 24 hex digits: " + id);
         }
         if (!isHexString(id)) {
-            return parseError("Expecting hex digits: " + id);
+            return parseError("Expected hex digits: " + id);
         }
         builder.append(fieldName, OID(id));
         return Status::OK();
@@ -774,21 +816,21 @@ namespace _bson {
 
     Status JParse::numberLong(const StringData& fieldName, BSONObjBuilder& builder) {
         if (!readToken(LPAREN)) {
-            return parseError("Expecting '('");
+            return parseError("Expected '('");
         }
         errno = 0;
         // SERVER-11920: We should use parseNumberFromString here, but that function requires that
         // we know ahead of time where the number ends, which is not currently the case.
         string s = get(DigitsSigned);
         if (s.empty()) {
-            return parseError("Expecting number in NumberLong");
+            return parseError("Expected number in NumberLong");
         }
         int64_t val = strtoll(s.c_str(), NULL, 10);
         if (errno == ERANGE) {
             return parseError("NumberLong out of range");
         }
         if (!readToken(RPAREN)) {
-            return parseError("Expecting ')'");
+            return parseError("Expected ')'");
         }
         builder.appendNumber(fieldName, static_cast<long long int>(val));
         return Status::OK();
@@ -796,21 +838,21 @@ namespace _bson {
 
     Status JParse::numberInt(const StringData& fieldName, BSONObjBuilder& builder) {
         if (!readToken(LPAREN)) {
-            return parseError("Expecting '('");
+            return parseError("Expected '('");
         }
         errno = 0;
         // SERVER-11920: We should use parseNumberFromString here, but that function requires that
         // we know ahead of time where the number ends, which is not currently the case.
         string s = get(DigitsSigned);
         if (s.empty()) {
-            return parseError("Expecting unsigned number in NumberInt");
+            return parseError("Expected unsigned number in NumberInt");
         }
         int32_t val = strtol(s.c_str(), NULL, 10);
         if (errno == ERANGE) {
             return parseError("NumberInt out of range");
         }
         if (!readToken(RPAREN)) {
-            return parseError("Expecting ')'");
+            return parseError("Expected ')'");
         }
         builder.appendNumber(fieldName, static_cast<int>(val));
         return Status::OK();
@@ -821,7 +863,7 @@ namespace _bson {
         BSONObjBuilder subBuilder(builder.subobjStart(fieldName));
 
         if (!readToken(LPAREN)) {
-            return parseError("Expecting '('");
+            return parseError("Expected '('");
         }
         std::string ns;
         ns.reserve(NS_RESERVE_SIZE);
@@ -832,7 +874,7 @@ namespace _bson {
         subBuilder.append("$ref", ns);
 
         if (!readToken(COMMA)) {
-            return parseError("Expecting ','");
+            return parseError("Expected ','");
         }
 
         Status valueRet = value("$id", subBuilder);
@@ -851,7 +893,7 @@ namespace _bson {
         }
 
         if (!readToken(RPAREN)) {
-            return parseError("Expecting ')'");
+            return parseError("Expected ')'");
         }
 
         subBuilder.obj();
@@ -860,7 +902,7 @@ namespace _bson {
 
     Status JParse::regex(const StringData& fieldName, BSONObjBuilder& builder) {
         if (!readToken(FORWARDSLASH)) {
-            return parseError("Expecting '/'");
+            return parseError("Expected '/'");
         }
         std::string pat;
         pat.reserve(PAT_RESERVE_SIZE);
@@ -869,7 +911,7 @@ namespace _bson {
             return patRet;
         }
         if (!readToken(FORWARDSLASH)) {
-            return parseError("Expecting '/'");
+            return parseError("Expected '/'");
         }
         std::string opt;
         opt.reserve(OPT_RESERVE_SIZE);
@@ -958,11 +1000,11 @@ namespace _bson {
             // 'isspace()' takes an 'int' (signed), so (default signed) 'char's get sign-extended
             // and therefore 'corrupted' unless we force them to be unsigned ... 0x80 becomes
             // 0xffffff80 as seen by isspace when sign-extended ... we want it to be 0x00000080
-            while (!_in.eof() &&
-                   isspace(*reinterpret_cast<const unsigned char*>(_in.peek()))) {
-                _in.get();
+            while (!eof() &&
+                   isspace((unsigned char)peek())) {
+                getc();
             }
-            if (_in.eof()) {
+            if (eof()) {
                 return parseError("Field name expected");
             }
             if (!match(peek(), ALPHA "_$")) {
@@ -974,26 +1016,28 @@ namespace _bson {
 
     Status JParse::quotedString(std::string* result) {
         MONGO_JSON_DEBUG("");
-        if (readToken(DOUBLEQUOTE)) {
+        if (peekToken(DOUBLEQUOTE)) {
+            getc();
             Status ret = chars(result, "\"");
             if (ret != Status::OK()) {
                 return ret;
             }
             if (!readToken(DOUBLEQUOTE)) {
-                return parseError("Expecting '\"'");
+                return parseError("Expected '\"'");
             }
         }
-        else if (readToken(SINGLEQUOTE)) {
+        else if (peekToken(SINGLEQUOTE)) {
+            getc();
             Status ret = chars(result, "'");
             if (ret != Status::OK()) {
                 return ret;
             }
             if (!readToken(SINGLEQUOTE)) {
-                return parseError("Expecting '''");
+                return parseError("Expected '''");
             }
         }
         else {
-            return parseError("Expecting quoted string");
+            return parseError("Expected quoted string");
         }
         return Status::OK();
     }
@@ -1044,7 +1088,7 @@ namespace _bson {
                         ss << getc() << getc() << getc() << peek();
                         string s = ss.str();
                             if (!isHexString(s)) {
-                                return parseError("Expecting 4 hex digits");
+                                return parseError("Expected 4 hex digits");
                             }
                             unsigned char first = fromHex(s);
                             unsigned char second = fromHex(s.c_str() + 2);
@@ -1074,7 +1118,7 @@ namespace _bson {
                 getc();
             }
             else {
-                result->push_back(ch); getc();
+                result->push_back(ch);
             }
         }
         if (!eof()) {
@@ -1116,9 +1160,18 @@ namespace _bson {
             char ch = peek();
             if (strchr(chars_wanted, ch) == 0)
                 break;
+            getc();
             b << ch;
         }
         return b.str();
+    }
+
+    char JParse::getc() { 
+        _offset++;
+        char ch = _in.get(); 
+        if (ch == '\n')
+            line++;
+        return ch;
     }
 
     char JParse::peek() { 
@@ -1134,7 +1187,7 @@ namespace _bson {
         // and therefore 'corrupted' unless we force them to be unsigned ... 0x80 becomes
         // 0xffffff80 as seen by isspace when sign-extended ... we want it to be 0x00000080
 
-        while (!eof() && isspace(*reinterpret_cast<const unsigned char*>(peek()))) {
+        while (!eof() && isspace((unsigned char) peek())) {
             getc();
         }
         while (*token != '\0') {
@@ -1198,6 +1251,8 @@ namespace _bson {
         if (i.eof()) {
             return bsonobj();
         }
+        char z = i.peek();
+
         JParse jparse(i);
         Status ret = Status::OK();
         try {
@@ -1211,10 +1266,11 @@ namespace _bson {
 
         if (ret != Status::OK()) {
             ostringstream message;
-            message << "code " << ret.code() << ": " << ret.codeString() << ": " << ret.reason();
-            throw MsgAssertionException(16619, message.str());
+            message << "parse error - " << ret.codeString(); // << ": " << ret.reason();
+            string s = message.str();
+            throw MsgAssertionException(16619, s);
         }
-        //if (len) *len = jparse.offset();
+        doc_number++;
         return builder.obj();
     }
     /*

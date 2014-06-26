@@ -49,7 +49,7 @@ namespace _bson {
      */
     class JParse {
         std::istream& _in;
-        unsigned long _offset;
+        unsigned long long _offset;
 
         std::string get(const char *chars_wanted);
     public:
@@ -118,8 +118,8 @@ namespace _bson {
 
         private:
             bool eof() const { return _in.eof(); }
-            char getc() { return _in.get(); }
-            
+            char getc();
+
             /* The following functions are called with the '{' and the first
              * field already parsed since they are both implied given the
              * context. */
@@ -406,9 +406,10 @@ namespace _bson {
              */
             _bson::Status parseError(const StringData& msg);
         public:
-            inline int offset() { return _offset; }
+            inline long long offset() { return _offset; }
 
         private:
+            Status err();
             /*
              * _buf - start of our input buffer
              * _input - cursor we advance in our input buffer

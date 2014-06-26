@@ -6,9 +6,11 @@
 
 namespace _bson {
 
-    class MsgAssertionException {
+    class MsgAssertionException : public std::exception {
     public:
-        MsgAssertionException(unsigned, std::string) {}
+        MsgAssertionException(unsigned, std::string _s) : s(_s) {}
+        const std::string s;
+        virtual const char * what() const { return s.c_str();  }
     };
 
     inline void massert(unsigned, const char *, bool x) {
