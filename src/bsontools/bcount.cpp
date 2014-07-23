@@ -21,10 +21,10 @@ char * p = buf;
 
 bool do_one() { 
     static char *lastbad = 0;
-    cout << "do_one " << have << endl;
+    //cout << "do_one " << have << endl;
     bsonobj b(p);
     int sz = b.objsize();
-    cout << "  sz " << sz << endl;
+    //cout << "  sz " << sz << endl;
     //    if (!b.valid()) {
     if (have < (unsigned) sz) {
         if (lastbad == p) {
@@ -49,7 +49,7 @@ int go()
     _setmode(_fileno(stdin), _O_BINARY);
 
     while (1) {
-        cout << "have: " << have << endl;
+        //cout << "have: " << have << endl;
         if (have < 4 || !do_one()) {
             // need more data
             if (p != buf) {
@@ -57,7 +57,7 @@ int go()
                 p = buf;
             }
             if (have == MaxSize) {
-                cout << "H " << have << endl;
+                //cout << "H " << have << endl;
                 cerr << "error: document too large for this utility? doc number:" << docnumber << endl;
                 return 1;
             }
@@ -70,7 +70,7 @@ int go()
             }
             cin.read(buf + have, MaxSize - have);
             unsigned n = (unsigned) cin.gcount();
-            cout << "gcount " << n << endl;
+            //out << "gcount " << n << endl;
             have += n;
         }
         else {
