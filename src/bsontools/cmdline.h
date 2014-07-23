@@ -1,15 +1,18 @@
+#pragma once
+
+#include <vector>
 
 class item {
 public:
-    string option;
-    string value;
+    std::string option;
+    std::string value;
     int v;
 };
 
 class cmdline {
     int c;
     char **v;
-    vector<item> items;
+    std::vector<item> items;
 public:
     cmdline(int argc, char* argv[]) : c(argc), v(argv) {
         for (int i = 1; i < argc; i++) {
@@ -18,7 +21,7 @@ public:
     }
 
     bool got(const char *s) {
-        for (auto i = items.begin(); i != i.end(); i++) {
+        for (auto i = items.begin(); i != items.end(); i++) {
 
         }
         for (int i = 1; i < c; i++)

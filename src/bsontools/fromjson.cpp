@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <iostream>
+#include <string>
 #include "../bson/json.h"
 #include "../bson/bsonobjbuilder.h"
 #include "cmdline.h"
@@ -16,7 +17,7 @@ void go() {
             if (cin.eof())
                 goto done;
             char ch = cin.peek();
-            if (ch == -1 || ch == 26 /*EOF*/)
+            if (ch == -1 || ch == 26 /*EOF*/ || cin.eof() )
                 goto done;
             if (ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n') {
                 cin.get();
@@ -36,6 +37,9 @@ bool parms(cmdline& c) {
     if (c.help()) {
         cout << "fromjson utility - convert JSON input to BSON output\n\n";
         cout << "options:\n";
+        cout << "  coming soon...\n\n";
+        cout << "stdin should provide JSON documents as input. Documents may span lines in the\n";
+        cout << "input. Quotes around fieldnames on the left hand side are generally optional.\n";
         return true;
     }
     return false;
