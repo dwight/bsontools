@@ -21,8 +21,10 @@ char * p = buf;
 
 bool do_one() { 
     static char *lastbad = 0;
+    cout << "do_one " << have << endl;
     bsonobj b(p);
     int sz = b.objsize();
+    cout << "  sz " << sz << endl;
     //    if (!b.valid()) {
     if (have < (unsigned) sz) {
         if (lastbad == p) {
@@ -34,12 +36,53 @@ bool do_one() {
     lastbad = 0;
     if (largest < (unsigned) sz) largest = sz;
     p += sz;
+    have -= sz;
     bytes += sz;
     docnumber++;
     return true;  
 }
 
 int go();
+
+int go()
+{
+    _setmode(_fileno(stdin), _O_BINARY);
+
+    while (1) {
+        cout << "have: " << have << endl;
+        if (have < 4 || !do_one()) {
+            // need more data
+            if (p != buf) {
+                memmove(buf, p, have);
+                p = buf;
+            }
+            if (have == MaxSize) {
+                cout << "H " << have << endl;
+                cerr << "error: document too large for this utility? doc number:" << docnumber << endl;
+                return 1;
+            }
+            if (cin.eof()) {
+                if (have) {
+                    cerr << "warning: " << have << " bytes at end of file past the last bson document" << endl;
+                    return 2;
+                }
+                break;
+            }
+            cin.read(buf + have, MaxSize - have);
+            unsigned n = (unsigned) cin.gcount();
+            cout << "gcount " << n << endl;
+            have += n;
+        }
+        else {
+            ;
+        }
+    }
+
+    cout << "docs:    " << docnumber << endl;
+    cout << "largest: " << largest << endl;
+
+	return 0;
+}
 
 bool parms(cmdline& c) {
     if (c.help()) {
@@ -64,42 +107,5 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
     return 0;
-}
+ }
 
-int go()
-{
-    _setmode(_fileno(stdin), _O_BINARY);
-
-    while (1) {
-        if (have < 4 || !do_one()) {
-            // need more data
-            if (p != buf) {
-                memmove(buf, p, have);
-                p = buf;
-            }
-            if (have == sizeof(buf)) {
-                cerr << "error: document too large for this utility? doc number:" << docnumber << endl;
-                return 1;
-            }
-            if (cin.eof()) {
-                if (have) {
-                    cerr << "warning: " << have << " bytes at end of file past the last bson document" << endl;
-                    return 2;
-                }
-                break;
-            }
-            cin.read(buf+have, sizeof(buf)-have);
-            unsigned n = (unsigned) cin.gcount();
-            have += n;
-        }
-        else {
-            ;
-        }
-    }
-
-    cout << "docs:    " << docnumber << endl;
-    cout << "largest: " << largest << endl;
-    cout << "count:   " << docnumber << endl;
-
-	return 0;
-}
