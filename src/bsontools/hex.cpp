@@ -3,12 +3,18 @@
 #include "stdio.h"
 #include "fcntl.h"
 #include "io.h"
-#include "../bson/hex.h"
+#include "../../../bson-cxx/src/bson/hex.h"
 
 using namespace std;
 
 int main(int argc, char* argv[])
 {
+    if (argc > 1) {
+        cout << "hex dump utility\n\n";
+        cout << "input from stdin will output in hexadecimal" << endl;
+        return 0;
+    }
+
     int result = _setmode(_fileno(stdin), _O_BINARY);
 
     char ch;

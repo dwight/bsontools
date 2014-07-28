@@ -11,34 +11,13 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\bson-cxx\src\bson\base64.cpp" />
+    <ClCompile Include="..\..\..\bson-cxx\src\bson\bson.cpp" />
+    <ClCompile Include="..\..\..\bson-cxx\src\bson\hex.cpp" />
+    <ClCompile Include="..\..\..\bson-cxx\src\bson\json.cpp" />
+    <ClCompile Include="..\..\..\bson-cxx\src\bson\parse_number.cpp" />
+    <ClCompile Include="..\..\..\bson-cxx\src\bson\time_support.cpp" />
     <ClCompile Include="..\..\src\bsontools\fromjson.cpp" />
-    <ClCompile Include="..\..\src\bson\base64.cpp" />
-    <ClCompile Include="..\..\src\bson\bson.cpp" />
-    <ClCompile Include="..\..\src\bson\hex.cpp" />
-    <ClCompile Include="..\..\src\bson\json.cpp" />
-    <ClCompile Include="..\..\src\bson\parse_number.cpp" />
-    <ClCompile Include="..\..\src\bson\time_support.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\..\src\bson\base.h" />
-    <ClInclude Include="..\..\src\bson\base64.h" />
-    <ClInclude Include="..\..\src\bson\bsonelement.h" />
-    <ClInclude Include="..\..\src\bson\bsonobj.h" />
-    <ClInclude Include="..\..\src\bson\bsonobjbuilder.h" />
-    <ClInclude Include="..\..\src\bson\bsontypes.h" />
-    <ClInclude Include="..\..\src\bson\builder.h" />
-    <ClInclude Include="..\..\src\bson\cstdint.h" />
-    <ClInclude Include="..\..\src\bson\errorcodes.h" />
-    <ClInclude Include="..\..\src\bson\hex.h" />
-    <ClInclude Include="..\..\src\bson\json.h" />
-    <ClInclude Include="..\..\src\bson\oid.h" />
-    <ClInclude Include="..\..\src\bson\ordering.h" />
-    <ClInclude Include="..\..\src\bson\parse_number.h" />
-    <ClInclude Include="..\..\src\bson\status.h" />
-    <ClInclude Include="..\..\src\bson\status_with.h" />
-    <ClInclude Include="..\..\src\bson\string_data-inl.h" />
-    <ClInclude Include="..\..\src\bson\string_data.h" />
-    <ClInclude Include="..\..\src\bson\time_support.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{B3EB1C1F-AB6D-40D1-91B4-942CBC0C2B68}</ProjectGuid>

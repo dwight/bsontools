@@ -13,87 +13,31 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="bson">
+      <UniqueIdentifier>{65756162-fdb6-40ea-a7b2-5105fb9bfbfe}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\bsontools\fromjson.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\bson\json.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\..\..\bson-cxx\src\bson\base64.cpp">
+      <Filter>bson</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\bson\base64.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\..\..\bson-cxx\src\bson\bson.cpp">
+      <Filter>bson</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\bson\parse_number.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\..\..\bson-cxx\src\bson\hex.cpp">
+      <Filter>bson</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\bson\bson.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\..\..\bson-cxx\src\bson\json.cpp">
+      <Filter>bson</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\bson\hex.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\..\..\bson-cxx\src\bson\parse_number.cpp">
+      <Filter>bson</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\bson\time_support.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\..\..\bson-cxx\src\bson\time_support.cpp">
+      <Filter>bson</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\..\src\bson\json.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\bson\bsonobjbuilder.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\bson\errorcodes.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\bson\status.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\bson\string_data.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\bson\string_data-inl.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\bson\base.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\bson\bsonelement.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\bson\bsonobj.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\bson\bsontypes.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\bson\builder.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\bson\time_support.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\bson\base64.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\bson\cstdint.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\bson\hex.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\bson\oid.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\bson\parse_number.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\bson\status_with.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\bson\ordering.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>

@@ -4,8 +4,8 @@
 #include <memory>
 #include <iostream>
 #include <string>
-#include "../bson/json.h"
-#include "../bson/bsonobjbuilder.h"
+#include "../../../bson-cxx/src/bson/json.h"
+#include "../../../bson-cxx/src/bson/bsonobjbuilder.h"
 #include "cmdline.h"
 
 using namespace std;
@@ -25,7 +25,7 @@ void go() {
             }
             break;
         }
-        BSONObjBuilder b;
+        bsonobjbuilder b;
         bsonobj o = fromjson(cin, b);
         cout.write(o.objdata(), o.objsize());
     }

@@ -5,7 +5,7 @@
 #include <fstream>
 #include "io.h"
 #include <fcntl.h>
-#include "../bson/bsonobj.h"
+#include "../../../bson-cxx/src/bson/bsonobj.h"
 #include "cmdline.h"
 
 using namespace std;
@@ -87,7 +87,7 @@ int go()
 bool parms(cmdline& c) {
     if (c.help()) {
         cout << "bcount utility - count BSON documents in input\n";
-        cout << "reports number of documents, largest document";
+        cout << "reports number of documents, and largest document's size";
         return true;
     }
     return false;
