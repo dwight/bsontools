@@ -16,13 +16,22 @@ class cmdline {
 public:
     cmdline(int argc, char* argv[]) : c(argc), v(argv) {
         for (int i = 1; i < argc; i++) {
-
+            item m;
+            m.option = argv[i];
+            m.v = 0;
+            items.push_back(m);
         }
+    }
+
+    std::string first() { 
+        return items.empty() ? "" : items.begin()->option;
     }
 
     bool got(const char *s) {
         for (int i = 1; i < c; i++) {
             const char *p = v[i];
+            if (strcmp(v[i], s) == 0)
+                return true;
             if (*p == '-') p++;
             if (*p == '-') p++;
             if (strcmp(v[i], s) == 0)

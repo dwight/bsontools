@@ -42,8 +42,6 @@ bool do_one() {
     return true;  
 }
 
-int go();
-
 int go()
 {
     _setmode(_fileno(stdin), _O_BINARY);
