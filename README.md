@@ -14,3 +14,8 @@ You will need the bson-cxx library (a dependancy) to build the tools.  It is ava
 Place it as a peer level directory on disk with bsontools.  (That is you will see 
 include "../../../bson-cxx/" in the source code of these tools...)
 
+As written these tools lightly use C++11.  This is mainly to avoid any external dependencies; for 
+example unique_ptr is used from C++11.  It would not be hard to adapt back to C++03.
+
+With Visual Studio, start by opening build/fromjson/fronjson/sln.
+
