@@ -21,12 +21,13 @@ public:
     }
 
     bool got(const char *s) {
-        for (auto i = items.begin(); i != items.end(); i++) {
-
-        }
-        for (int i = 1; i < c; i++)
+        for (int i = 1; i < c; i++) {
+            const char *p = v[i];
+            if (*p == '-') p++;
+            if (*p == '-') p++;
             if (strcmp(v[i], s) == 0)
                 return true;
+        }
         return false;
     }
 
