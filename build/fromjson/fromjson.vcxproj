@@ -19,6 +19,31 @@
     <ClCompile Include="..\..\..\bson-cxx\src\bson\time_support.cpp" />
     <ClCompile Include="..\..\src\bsontools\fromjson.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\bson-cxx\src\bson\base.h" />
+    <ClInclude Include="..\..\..\bson-cxx\src\bson\base64.h" />
+    <ClInclude Include="..\..\..\bson-cxx\src\bson\bson-inl.h" />
+    <ClInclude Include="..\..\..\bson-cxx\src\bson\bsonelement.h" />
+    <ClInclude Include="..\..\..\bson-cxx\src\bson\bsonobj.h" />
+    <ClInclude Include="..\..\..\bson-cxx\src\bson\bsonobjbuilder.h" />
+    <ClInclude Include="..\..\..\bson-cxx\src\bson\bsonobjiterator.h" />
+    <ClInclude Include="..\..\..\bson-cxx\src\bson\bsontypes.h" />
+    <ClInclude Include="..\..\..\bson-cxx\src\bson\builder.h" />
+    <ClInclude Include="..\..\..\bson-cxx\src\bson\cstdint.h" />
+    <ClInclude Include="..\..\..\bson-cxx\src\bson\endian.h" />
+    <ClInclude Include="..\..\..\bson-cxx\src\bson\errorcodes.h" />
+    <ClInclude Include="..\..\..\bson-cxx\src\bson\float_utils.h" />
+    <ClInclude Include="..\..\..\bson-cxx\src\bson\hex.h" />
+    <ClInclude Include="..\..\..\bson-cxx\src\bson\json.h" />
+    <ClInclude Include="..\..\..\bson-cxx\src\bson\oid.h" />
+    <ClInclude Include="..\..\..\bson-cxx\src\bson\ordering.h" />
+    <ClInclude Include="..\..\..\bson-cxx\src\bson\parse_number.h" />
+    <ClInclude Include="..\..\..\bson-cxx\src\bson\status.h" />
+    <ClInclude Include="..\..\..\bson-cxx\src\bson\status_with.h" />
+    <ClInclude Include="..\..\..\bson-cxx\src\bson\string_data-inl.h" />
+    <ClInclude Include="..\..\..\bson-cxx\src\bson\string_data.h" />
+    <ClInclude Include="..\..\..\bson-cxx\src\bson\time_support.h" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{B3EB1C1F-AB6D-40D1-91B4-942CBC0C2B68}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>

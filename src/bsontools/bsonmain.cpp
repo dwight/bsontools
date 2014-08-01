@@ -12,6 +12,14 @@ using namespace _bson;
 
 namespace bsontools {
 
+    class print : public StdinDocReader {
+    public:
+        virtual bool doc(bsonobj& b) {
+            cout << b.toString() << endl;
+            return true;
+        }
+    };
+
     class count : public StdinDocReader {
     public:
         int largest = 0;
@@ -41,6 +49,10 @@ namespace bsontools {
         if (s == "head") {
             head h;
             h.go();
+        }
+        else if (s == "print") {
+            print x;
+            x.go();
         }
         else if (s == "count") {
             count x;
