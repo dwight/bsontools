@@ -34,12 +34,13 @@ namespace bsontools {
         int n = 0;
         virtual bool doc(bsonobj& b) {
             cout.write(b.objdata(), b.objsize());
-            if (++n >= 10)
+            if (++n >= N)
                 done = true;
             return true;
         }
     public:
-        head(){
+        int N = 10;
+        head() {
             _setmode(_fileno(stdout), _O_BINARY);
         }
     };
@@ -48,6 +49,10 @@ namespace bsontools {
         string s = c.first();
         if (s == "head") {
             head h;
+            int x = c.getNum("n");
+            if (x > 0) {
+                h.N = x;
+            }
             h.go();
         }
         else if (s == "print") {
