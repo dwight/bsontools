@@ -30,11 +30,11 @@ public:
     bool got(const char *s) {
         for (int i = 1; i < c; i++) {
             const char *p = v[i];
-            if (strcmp(v[i], s) == 0)
+            if (strcmp(p, s) == 0)
                 return true;
             if (*p == '-') p++;
             if (*p == '-') p++;
-            if (strcmp(v[i], s) == 0)
+            if (strcmp(p, s) == 0)
                 return true;
         }
         return false;

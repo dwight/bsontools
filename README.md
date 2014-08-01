@@ -2,8 +2,8 @@ These are simple utilities for manipulation of bson documents.
 
 bcount   - count # of bson documents in a bson file
 fromjson - convert JSON to BSON
-hex      - hex dump of any input.  provided as a convenience for 
-           any OS where 'hexdump' is not already present.
+hex      - hex dump of any input, with a tiny bit of bson format awareness.  
+           also provided as a convenience for any OS where 'hexdump' is not already present.
 
 Note: many of these utilities expect input from stdin, to facilitate piping.  Use -h to 
       get help.
