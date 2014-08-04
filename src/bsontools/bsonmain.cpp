@@ -89,8 +89,8 @@ bool parms(cmdline& c) {
         cout << "  bson -h                     for help\n";
         cout << "\n";
         cout << "Verbs:\n";
-        cout << "  head [-n <N>]               output the first N documents. (N=10 default)\n";
         cout << "  count                       output # of documents in file, then size in bytes of largest document\n";
+        cout << "  head [-n <N>]               output the first N documents. (N=10 default)\n";
         cout << "  print                       convert bson to json (print json to stdout)\n";
         cout << "\n";
         return true;
