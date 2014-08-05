@@ -3,7 +3,10 @@
 /** read BSON documents from stdin.  handles binary mode and such for the class user. */
 class StdinDocReader {
 public:
-    void go() { iter(); }
+    void go() { 
+        iter(); 
+        finished();
+    }
     unsigned nDocs() { return docnumber; }
 private:
     const unsigned MaxSize = 128 * 1024 * 1024 + 1;
@@ -32,6 +35,7 @@ private:
         return true;
     }
 protected:
+    virtual void finished() { }
     bool done = false;
     virtual bool doc(bsonobj&) = 0;
     int iter()

@@ -3,7 +3,10 @@
 #include "io.h"
 #include <fcntl.h>
 #include "../../../bson-cxx/src/bson/bsonobj.h"
+#include "../../../bson-cxx/src/bson/bsonobjiterator.h"
+#include "../../../bson-cxx/src/bson/bsonobjbuilder.h"
 #include "cmdline.h"
+#include <deque>
 
 using namespace std;
 using namespace _bson;
@@ -11,6 +14,45 @@ using namespace _bson;
 #include "stdin.h"
 
 namespace bsontools {
+
+    class PrintElem {
+    public:
+        void operator() (bsonelement& x) {
+            if (x.isNumber()) {
+                x.toString(s, false, false);
+                s << '\t';
+            }
+            else if( x.type() == _bson::String ) {
+                s << x.valuestr() << '\t';
+            }
+        }
+        StringBuilder s;
+    };
+
+    template<typename T>
+    void descend(bsonobj& o, T& f) {
+        bsonobjiterator i(o);
+        while (i.more()) {
+            bsonelement e = i.next();
+            if (e.isObject()) {
+                descend(e.object(),f);
+            }
+            else {
+                f(e);
+            }
+        }
+    }
+
+    class text : public StdinDocReader {
+    public:
+        PrintElem f;
+        virtual bool doc(bsonobj& b) {
+            descend(b, f);
+            cout << f.s.str() << '\n';
+            f.s.reset();
+            return true;
+        }
+    };
 
     class print : public StdinDocReader {
     public:
@@ -27,6 +69,37 @@ namespace bsontools {
             if (b.objsize() > largest)
                 largest = b.objsize();
             return true;
+        }
+    };
+
+    class bsonobjholder {
+        string buf;
+    public:
+        bsonobjholder(bsonobj& o) : buf(o.objdata(), o.objsize()) { }
+        bsonobj obj() const { return bsonobj(buf.c_str()); }
+    };
+
+    /** THIS IS VERY INEFFICIENT. But wanted to just get the capability in a crude form in place. */
+    class tail : public StdinDocReader {
+        int n = 0;
+        deque<bsonobjholder> last;
+        virtual void finished() { 
+            for (auto i = last.begin(); i != last.end(); i++) {
+                bsonobj o = i->obj();
+                cout.write(o.objdata(), o.objsize());
+            }
+        }
+        virtual bool doc(bsonobj& b) {
+            if (++n > N) {
+                last.pop_front();
+            }
+            last.push_back(bsonobjholder(b));
+            return true;
+        }
+    public:
+        int N = 10;
+        tail() {
+            _setmode(_fileno(stdout), _O_BINARY);
         }
     };
 
@@ -55,9 +128,21 @@ namespace bsontools {
             }
             h.go();
         }
+        else if (s == "tail") {
+            tail h;
+            int x = c.getNum("n");
+            if (x > 0) {
+                h.N = x;
+            }
+            h.go();
+        }
         else if (s == "print") {
             print x;
             x.go();
+        }
+        else if (s == "text") {
+            text t;
+            t.go();
         }
         else if (s == "count") {
             count x;
@@ -91,7 +176,9 @@ bool parms(cmdline& c) {
         cout << "Verbs:\n";
         cout << "  count                       output # of documents in file, then size in bytes of largest document\n";
         cout << "  head [-n <N>]               output the first N documents. (N=10 default)\n";
+        cout << "  tail [-n <N>]\n";
         cout << "  print                       convert bson to json (print json to stdout)\n";
+        cout << "  text                        extract text values and output (no fieldnames)\n";
         cout << "\n";
         return true;
     }
@@ -104,6 +191,17 @@ int main(int argc, char* argv[])
         cmdline c(argc, argv);
         if (parms(c))
             return 0;
+
+        // temp
+        if( 0 ){
+            bsontools::text t;
+            bsonobjbuilder b;
+            bsonobj o = b.append("x", 3).append("Y", "abc").obj();
+            cout << o.toString() << endl;
+
+            t.doc(o);
+        }
+
         return bsontools::go(c);
     }
     catch (std::exception& e) {
