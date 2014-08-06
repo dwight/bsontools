@@ -13,7 +13,7 @@ int main(int argc, char* argv[])
 {
     cmdline c(argc, argv);
 
-    if (c.got("h") || c.got("help")) {
+    if (c.help()) {
         cout << "Hex dump utility. ";
         cout << "Input from stdin will output in hexadecimal.\n" << endl;
         cout << "This utility has a tiny amount of BSON awareness.  It will output (in hex)\n";

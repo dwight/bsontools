@@ -6,9 +6,9 @@
 using namespace _bson;
 using namespace std;
 
-class item {
+class option {
 public:
-    std::string option;
+    std::string opt;
     std::string value;
     int v;
 };
@@ -16,61 +16,56 @@ public:
 class cmdline {
     int c;
     char **v;
-    std::vector<item> items;
+    std::vector<option> options; // -dash or --dash things
 public:
+    std::vector<string> items;   // regular items on cmd line no dash
     cmdline(int argc, char* argv[]) : c(argc), v(argv) {
         for (int i = 1; i < argc; i++) {
-            item m;
             const char *p = argv[i];
             if (*p == '-') {
+                option m;
                 // look for an option value after a dash item, e.g. 
                 //   -n 10 
                 // becomes a single 'item'.
                 p++;
                 if (*p == '-') p++;
-                m.option = p;
+                m.opt = p;
                 int j = i + 1;
-                if (j < argc && argv[j][0] != '-') {
+                if (j < argc && argv[j][0] != '-' && isdigit(argv[j][0])) {
                     m.value = argv[j];
                     i++;
                 }
+                options.push_back(m);
             }
             else {
-                m.option = argv[i];
-                m.v = 0;
+                items.push_back(argv[i]);
             }
-            items.push_back(m);
         }
     }
 
     std::string first() { 
-        return items.empty() ? "" : items.begin()->option;
+        return items.empty() ? "" : *items.begin();
     }
 
     unsigned getNum(string parmName) {
         int res = -1;
-        for (unsigned i = 0; i < items.size(); i++) {
-            if (items[i].option == parmName) {
-                parseNumberFromString(items[i].value, &res);
+        for (unsigned i = 0; i < options.size(); i++) {
+            if (options[i].opt == parmName) {
+                parseNumberFromString(options[i].value, &res);
             }
         }
         return res;
     }
-
+    
     bool got(const char *s) {
-        for (int i = 1; i < c; i++) {
-            const char *p = v[i];
-            if (strcmp(p, s) == 0)
-                return true;
-            if (*p == '-') p++;
-            if (*p == '-') p++;
-            if (strcmp(p, s) == 0)
+        for (unsigned i = 0; i < options.size(); i++) {
+            if (options[i].opt == s)
                 return true;
         }
         return false;
     }
-
+    
     bool help() {
-        return got("--help") || got("-h");
+        return got("help") || got("h");
     }
 };

@@ -15,16 +15,60 @@ using namespace _bson;
 
 namespace bsontools {
 
+    bool emitDocNumber = false; 
+
+    class bsonobjholder {
+        string buf;
+    public:
+        bsonobjholder(bsonobj& o) : buf(o.objdata(), o.objsize()) { }
+        bsonobj obj() const { return bsonobj(buf.c_str()); }
+    };
+
+    void write(bsonobj& o, long long docNumber = -1) {
+        if (emitDocNumber && docNumber >= 0)
+            cout << docNumber << '\n';
+        else
+            cout.write(o.objdata(), o.objsize());
+    }
+
+    class GrepElem {
+    public:
+        bool i = false;
+        string target;
+        bool matched = false;
+        void reset() { matched = false;  }
+        void operator() (bsonelement& x) {
+            string s;
+            const char *p;
+            if (x.isNumber()) {
+                s = x.toString(false);
+                p = s.c_str();
+            }
+            else if (x.type() == _bson::String) {
+                p = x.valuestr();
+            }
+            else {
+                return;
+            }
+            if (strstr(p, target.c_str()) != 0)
+                matched = true;
+        }
+    };
+
     class PrintElem {
     public:
-        void operator() (bsonelement& x) {
+        void reset() {
+            s.reset();
+        }
+        bool operator() (bsonelement& x) {
             if (x.isNumber()) {
                 x.toString(s, false, false);
                 s << '\t';
             }
-            else if( x.type() == _bson::String ) {
+            else if (x.type() == _bson::String) {
                 s << x.valuestr() << '\t';
             }
+            return true;
         }
         StringBuilder s;
     };
@@ -43,13 +87,29 @@ namespace bsontools {
         }
     }
 
+    class grep : public StdinDocReader {
+    public:
+        GrepElem f;
+        virtual bool doc(bsonobj& b) {
+            descend(b, f);
+            if (f.matched) {
+                write(b, nDocs());
+            }
+            f.reset();
+            return true;
+        }
+        grep(string s) { 
+            f.target = s;
+        }
+    };
+
     class text : public StdinDocReader {
     public:
         PrintElem f;
         virtual bool doc(bsonobj& b) {
             descend(b, f);
             cout << f.s.str() << '\n';
-            f.s.reset();
+            f.reset();
             return true;
         }
     };
@@ -72,13 +132,6 @@ namespace bsontools {
         }
     };
 
-    class bsonobjholder {
-        string buf;
-    public:
-        bsonobjholder(bsonobj& o) : buf(o.objdata(), o.objsize()) { }
-        bsonobj obj() const { return bsonobj(buf.c_str()); }
-    };
-
     /** THIS IS VERY INEFFICIENT. But wanted to just get the capability in a crude form in place. */
     class tail : public StdinDocReader {
         int n = 0;
@@ -86,7 +139,7 @@ namespace bsontools {
         virtual void finished() { 
             for (auto i = last.begin(); i != last.end(); i++) {
                 bsonobj o = i->obj();
-                cout.write(o.objdata(), o.objsize());
+                write(o);
             }
         }
         virtual bool doc(bsonobj& b) {
@@ -106,7 +159,7 @@ namespace bsontools {
     class head : public StdinDocReader {
         int n = 0;
         virtual bool doc(bsonobj& b) {
-            cout.write(b.objdata(), b.objsize());
+            write(b, nDocs());
             if (++n >= N)
                 done = true;
             return true;
@@ -144,6 +197,10 @@ namespace bsontools {
             text t;
             t.go();
         }
+        else if (s == "grep") {
+            grep t(c.items[1]);
+            t.go();
+        }
         else if (s == "count") {
             count x;
             x.go();
@@ -171,7 +228,10 @@ bool parms(cmdline& c) {
         cout << "Usage:\n";
         cout << "\n";
         cout << "  bson <verb> <options>\n";
-        cout << "  bson -h                     for help\n";
+        cout << "\n";
+        cout << "Options:\n";
+        cout << "  -h                          for help\n";
+        cout << "  -#                          emit document number instead of the document's bson content\n";
         cout << "\n";
         cout << "Verbs:\n";
         cout << "  count                       output # of documents in file, then size in bytes of largest document\n";
@@ -179,9 +239,12 @@ bool parms(cmdline& c) {
         cout << "  tail [-n <N>]\n";
         cout << "  print                       convert bson to json (print json to stdout)\n";
         cout << "  text                        extract text values and output (no fieldnames)\n";
+        cout << "  grep <pattern>              text search each document for a simple text pattern. not actual\n";
+        cout << "                              regular expressions yet. outputs matched documents.\n";
         cout << "\n";
         return true;
     }
+    bsontools::emitDocNumber = c.got("#");
     return false;
 }
 
