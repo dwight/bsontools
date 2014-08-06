@@ -43,8 +43,12 @@ public:
         }
     }
 
-    std::string first() { 
+    std::string first() {
         return items.empty() ? "" : *items.begin();
+    }
+
+    std::string second() {
+        return items.size() >= 2 ? items[1] : "";
     }
 
     unsigned getNum(string parmName) {

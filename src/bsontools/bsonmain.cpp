@@ -156,6 +156,48 @@ namespace bsontools {
         }
     };
 
+    class sample : public StdinDocReader {
+        virtual bool doc(bsonobj& b) {
+            if (nDocs() % N == 0) {
+                write(b, nDocs());
+            }
+            return true;
+        }
+    public:
+        int N = 10;
+        sample() {
+            _setmode(_fileno(stdout), _O_BINARY);
+        }
+    };
+
+    class demote : public StdinDocReader {
+
+        virtual bool doc(bsonobj& b) {
+            bsonobjbuilder bldr;
+            bldr.append(fieldName, b);
+            write(bldr.obj(), nDocs());
+            return true;
+        }
+    public:
+        string fieldName;
+        demote() { _setmode(_fileno(stdout), _O_BINARY); }
+    };
+
+    class promote : public StdinDocReader {
+
+        virtual bool doc(bsonobj& b) {
+            //cout << b.toString() << endl;
+            bsonelement e = b.getFieldDotted(fieldName);
+            if (e.isObject()) {
+                write(e.object(), nDocs());
+            }
+            return true;
+        }
+    public:
+        string fieldName;
+        promote() { _setmode(_fileno(stdout), _O_BINARY); }
+    };
+
     class head : public StdinDocReader {
         int n = 0;
         virtual bool doc(bsonobj& b) {
@@ -181,6 +223,24 @@ namespace bsontools {
             }
             h.go();
         }
+        else if (s == "promote") {
+            promote x;
+            x.fieldName = c.second();
+            x.go();
+        }
+        else if (s == "demote") {
+            demote x;
+            x.fieldName = c.second();
+            x.go();
+        }
+        else if (s == "sample") {
+            sample s;
+            int x = c.getNum("n");
+            if (x < 1)
+                throw std::exception("bad or missing -n argument");
+            s.N = x;
+            s.go();
+        }
         else if (s == "tail") {
             tail h;
             int x = c.getNum("n");
@@ -198,7 +258,7 @@ namespace bsontools {
             t.go();
         }
         else if (s == "grep") {
-            grep t(c.items[1]);
+            grep t(c.second());
             t.go();
         }
         else if (s == "count") {
@@ -236,11 +296,16 @@ bool parms(cmdline& c) {
         cout << "Verbs:\n";
         cout << "  count                       output # of documents in file, then size in bytes of largest document\n";
         cout << "  head [-n <N>]               output the first N documents. (N=10 default)\n";
-        cout << "  tail [-n <N>]\n";
+        cout << "  tail [-n <N>]               note: current tail implementation is slow\n";
+        cout << "  sample -n <N>               output every Nth document\n";
         cout << "  print                       convert bson to json (print json to stdout)\n";
         cout << "  text                        extract text values and output (no fieldnames)\n";
         cout << "  grep <pattern>              text search each document for a simple text pattern. not actual\n";
         cout << "                              regular expressions yet. outputs matched documents.\n";
+        cout << "  demote <fieldname>          put each document inside a field named fieldname, then output\n";
+        cout << "  promote <fieldname>         pull out the subobject specified by fieldname and output it (only).\n";
+        cout << "                              if the field is missing or not an object nothing will be output. Dot\n";
+        cout << "                              notation is supported.";
         cout << "\n";
         return true;
     }
@@ -257,12 +322,12 @@ int main(int argc, char* argv[])
 
         // temp
         if( 0 ){
-            bsontools::text t;
+            
             bsonobjbuilder b;
             bsonobj o = b.append("x", 3).append("Y", "abc").obj();
             cout << o.toString() << endl;
-
-            t.doc(o);
+            bsonelement e = o.getFieldDotted("y");
+            e.isObject();
         }
 
         return bsontools::go(c);

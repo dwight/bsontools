@@ -19,3 +19,26 @@ example unique_ptr is used from C++11.  It would not be hard to adapt back to C+
 
 With Visual Studio, start by opening build/fromjson/fronjson/sln.
 
+## Usage
+
+The utilities are primarily meant to perform tranformations on lists of BSON documents.
+
+For example, suppose we have a set of JSON documents of the form:
+
+{ street:..., city:..., province:..., country:... }
+...
+
+If we wanted this to be in a larger document we might use the demote command to "wrap" these 
+values:
+
+bson demote addr < in.bson > out.bson
+
+If we then inspected:
+
+bson print < out.bson
+
+we would see something like:
+
+{ addr : { street:..., city:..., province:..., country:... } }
+...
+
