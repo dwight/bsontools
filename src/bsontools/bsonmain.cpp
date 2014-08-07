@@ -183,8 +183,34 @@ namespace bsontools {
         demote() { _setmode(_fileno(stdout), _O_BINARY); }
     };
 
-    class promote : public StdinDocReader {
+    void merge(istream& _a, istream& _b) {
+        DocReader a(_a);
+        DocReader b(_b);
+        while (1) {
+            bsonobjbuilder builder;
+            int r1 = a.next();
+            int r2 = b.next();
+            if (r1 > 0)
+                exit(r1);
+            if (r2 > 0)
+                exit(r2);
+            if (r1 != r2) {
+                cerr << "error: different number of documents in two files to merge" << endl;
+                exit(5);
+            }
+            if (r1 < 0)
+                break;
 
+//            cout << '\n' << b.obj.toString() << endl;
+
+            // ok...
+            builder.appendElements(a.obj);
+            builder.appendElementsUnique(b.obj);
+            write(builder.obj(), a.nDocs());
+        }
+    }
+
+    class promote : public StdinDocReader {
         virtual bool doc(bsonobj& b) {
             //cout << b.toString() << endl;
             bsonelement e = b.getFieldDotted(fieldName);
@@ -227,6 +253,15 @@ namespace bsontools {
             promote x;
             x.fieldName = c.second();
             x.go();
+        }
+        else if (s == "merge") {
+            string fn = c.second();
+            ifstream f(fn);
+            if (!f.is_open()) {
+                cerr << "error couldn't open file: " << fn << endl;
+                exit(1);
+            }
+            merge(cin, f);
         }
         else if (s == "demote") {
             demote x;
@@ -305,11 +340,13 @@ bool parms(cmdline& c) {
         cout << "  demote <fieldname>          put each document inside a field named fieldname, then output\n";
         cout << "  promote <fieldname>         pull out the subobject specified by fieldname and output it (only).\n";
         cout << "                              if the field is missing or not an object nothing will be output. Dot\n";
-        cout << "                              notation is supported.";
+        cout << "                              notation is supported.\n";
+        cout << "  merge <filename>            merge bson stream stdin with bson file on cmd line.  should be same\n";
+        cout << "                              number of documents in each input.\n";
         cout << "\n";
         return true;
     }
-    bsontools::emitDocNumber = c.got("#");
+    bsontools::emitDocNumber = c.got("#"); 
     return false;
 }
 

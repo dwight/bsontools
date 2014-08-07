@@ -42,3 +42,4 @@ we would see something like:
 { addr : { street:..., city:..., province:..., country:... } }
 ...
 
+And this output could be used then with say, a merge operation for example.
