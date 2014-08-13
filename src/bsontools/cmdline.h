@@ -1,5 +1,6 @@
 #pragma once
 
+#include <set>
 #include <vector>
 #include "../../../bson-cxx/src/bson/parse_number.h"
 
@@ -19,7 +20,7 @@ class cmdline {
     std::vector<option> options; // -dash or --dash things
 public:
     std::vector<string> items;   // regular items on cmd line no dash
-    cmdline(int argc, char* argv[]) : c(argc), v(argv) {
+    cmdline(int argc, char* argv[], set<string> *optionsWithParameter = 0) : c(argc), v(argv) {
         for (int i = 1; i < argc; i++) {
             const char *p = argv[i];
             if (*p == '-') {
@@ -31,7 +32,9 @@ public:
                 if (*p == '-') p++;
                 m.opt = p;
                 int j = i + 1;
-                if (j < argc && argv[j][0] != '-' && isdigit(argv[j][0])) {
+                if (j < argc && argv[j][0] != '-' && 
+                    (isdigit(argv[j][0]) || (optionsWithParameter && optionsWithParameter->count(p)))
+                    ) {
                     m.value = argv[j];
                     i++;
                 }
@@ -51,16 +54,22 @@ public:
         return items.size() >= 2 ? items[1] : "";
     }
 
-    unsigned getNum(string parmName) {
+    string getStr(string parmName) {
         int res = -1;
         for (unsigned i = 0; i < options.size(); i++) {
             if (options[i].opt == parmName) {
-                parseNumberFromString(options[i].value, &res);
+                return options[i].value;
             }
         }
+        return "";
+    }
+
+    unsigned getNum(string parmName) {
+        int res = -1;
+        parseNumberFromString(getStr(parmName), &res);
         return res;
     }
-    
+
     bool got(const char *s) {
         for (unsigned i = 0; i < options.size(); i++) {
             if (options[i].opt == s)

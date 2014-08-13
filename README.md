@@ -1,13 +1,13 @@
 These are simple utilities for manipulation of bson documents.
 
-bcount   - count # of bson documents in a bson file
+bson     - main utility.  see bson --help
 fromjson - convert JSON to BSON
 fromcsv  - convert CSV to BSON
 hex      - hex dump of any input, with a tiny bit of bson format awareness.  
            also provided as a convenience for any OS where 'hexdump' is not already present.
 
-Note: many of these utilities expect input from stdin, to facilitate piping.  Use -h to 
-      get help.
+Note: Many of these utilities expect input from stdin, to facilitate piping.  
+      Use -h to get help.
 
 ## Building
 
@@ -19,6 +19,22 @@ As written these tools lightly use C++11.  This is mainly to avoid any external 
 example unique_ptr is used from C++11.  It would not be hard to adapt back to C++03.
 
 With Visual Studio, start by opening build/fromjson/fronjson/sln.
+
+## Operations
+
+The main bson utility supports a number of operations including: 
+
+* count
+* head
+* tail
+* sampling
+* printing
+* extracting text
+* searching
+git * certain mutation on documents' fields e.g. demotion, promotion, projection, deletion
+* merging of documents
+
+Run "bson --help" for more information.
 
 ## Usage
 

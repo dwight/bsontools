@@ -13,6 +13,8 @@ using namespace _bson;
 
 #include "stdin.h"
 
+void strSplit(vector<string> &line, const string& str);
+
 namespace bsontools {
 
     bool emitDocNumber = false; 
@@ -170,8 +172,51 @@ namespace bsontools {
         }
     };
 
-    class demote : public StdinDocReader {
+    class project : public StdinDocReader {
+        virtual bool doc(bsonobj& b) {
+            set<string> f(fields.begin(), fields.end());
+            {
+                bsonobjbuilder bldr;
+                bsonobjiterator i(b);
+                while (i.more()) {
+                    bsonelement e = i.next();
+                    if (f.count(e.fieldName())) {
+                        bldr.append(e);
+                    }
+                }
+                write(bldr.obj(), nDocs());
+            }
+            return true;
+        }
+    public:
+        vector<string>fields;
+        project() { _setmode(_fileno(stdout), _O_BINARY); }
+    };
 
+    class del : public StdinDocReader {
+        virtual bool doc(bsonobj& b) {
+            if (!b.hasField(fieldName)) {
+                write(b, nDocs());
+            }
+            else {
+                bsonobjbuilder bldr;
+                bsonobjiterator i(b);
+                while (i.more()) {
+                    bsonelement e = i.next();
+                    if (fieldName != e.fieldName()) {
+                        bldr.append(e);
+                    }
+                }
+                write(bldr.obj(), nDocs());
+            }
+            return true;
+        }
+    public:
+        string fieldName;
+        del() { _setmode(_fileno(stdout), _O_BINARY); }
+    };
+
+    class demote : public StdinDocReader {
         virtual bool doc(bsonobj& b) {
             bsonobjbuilder bldr;
             bldr.append(fieldName, b);
@@ -249,6 +294,16 @@ namespace bsontools {
             }
             h.go();
         }
+        else if (s == "project") {
+            project x;
+            strSplit(x.fields, c.second());
+            x.go();
+        }
+        else if (s == "del") {
+            del x;
+            x.fieldName = c.second();
+            x.go();
+        }
         else if (s == "promote") {
             promote x;
             x.fieldName = c.second();
@@ -310,6 +365,61 @@ namespace bsontools {
 
 }
 
+const char QUOTE = '"';
+const char COMMA = ',';
+
+void strSplit(vector<string> &line, const string& str) {
+    line.clear();
+    if (str.empty())
+        return;
+
+    const char *p = str.c_str();
+    while (1) {
+        StringBuilder s;
+        bool quoted = (*p == QUOTE);
+        if (quoted) {
+            p++;
+        }
+        while (1) {
+            if (*p == QUOTE) {
+                if (p[1] == QUOTE) {
+                    s << QUOTE;
+                    p += 2;
+                }
+                else {
+                    // end of field
+                    uassert(1000, "unexpected quote", quoted);
+                    p++;
+                    break;
+                }
+            }
+            else if (*p == COMMA && !quoted) {
+                break;
+            }
+            else if (*p == 0) {
+                if (!quoted) {
+                    break;
+                }
+                else {
+                    throw std::exception("expected quote");
+                }
+            }
+            else {
+                s << *p++;
+            }
+        }
+        line.push_back(s.str());
+        if (*p == COMMA) {
+            p++;
+            continue;
+        }
+        if (*p == 0) {
+            break;
+        }
+        throw std::exception("error: expected comma or end of line (after quote?)");
+    }
+}
+
 bool parms(cmdline& c) {
     if (c.help()) {
         cout << "bson - utility for manipulating BSON files.\n\n";
@@ -335,12 +445,15 @@ bool parms(cmdline& c) {
         cout << "  sample -n <N>               output every Nth document\n";
         cout << "  print                       convert bson to json (print json to stdout)\n";
         cout << "  text                        extract text values and output (no fieldnames)\n";
-        cout << "  grep <pattern>              text search each document for a simple text pattern. not actual\n";
-        cout << "                              regular expressions yet. outputs matched documents.\n";
-        cout << "  demote <fieldname>          put each document inside a field named fieldname, then output\n";
+        cout << "  grep <pattern>              text search each document for a simple text pattern. Not actual\n";
+        cout << "                              regular expressions yet. outputs matched documents.  Element values\n";
+        cout << "                              are searched for, field names are not.\n";
+        cout << "  project <fieldnamelist>     project comma separated list of top level fieldnames to output\n";
+        cout << "  del <fieldname>             delete a top level field and then re-output the stream\n";
         cout << "  promote <fieldname>         pull out the subobject specified by fieldname and output it (only).\n";
         cout << "                              if the field is missing or not an object nothing will be output. Dot\n";
         cout << "                              notation is supported.\n";
+        cout << "  demote <fieldname>          put each document inside a field named fieldname, then output\n";
         cout << "  merge <filename>            merge bson stream stdin with bson file on cmd line.  should be same\n";
         cout << "                              number of documents in each input.\n";
         cout << "\n";
