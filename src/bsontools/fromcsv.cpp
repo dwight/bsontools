@@ -1,4 +1,6 @@
 #include <memory>
+#include "io.h"
+#include <fcntl.h>
 #include <iostream>
 #include <string>
 #include "../../../bson-cxx/src/bson/json.h"
@@ -129,6 +131,8 @@ void appendAsNumber(bsonobjbuilder& b, const string &f, const char *p) {
 /** accepts optinally a top level array of documents [ {}, ... ]
 */
 void go() {
+    _setmode(_fileno(stdout), _O_BINARY);
+
     if (header) {
         getHeader();
     }
@@ -144,7 +148,6 @@ void go() {
         if (!getl(line, cin)) {
             break;
         }
-        cerr << "GOT " << line.size() << endl;
         {
             bsonobjbuilder b;
             for ( unsigned i = 0; i < line.size(); i++ ) {

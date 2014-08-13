@@ -31,7 +31,7 @@ The main bson utility supports a number of operations including:
 * printing
 * extracting text
 * searching
-git * certain mutation on documents' fields e.g. demotion, promotion, projection, deletion
+* certain mutation on documents' fields e.g. demotion, promotion, projection, deletion
 * merging of documents
 
 Run "bson --help" for more information.

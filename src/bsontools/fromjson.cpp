@@ -4,6 +4,8 @@
 #include <memory>
 #include <iostream>
 #include <string>
+#include "io.h"
+#include <fcntl.h>
 #include "../../../bson-cxx/src/bson/json.h"
 #include "../../../bson-cxx/src/bson/bsonobjbuilder.h"
 #include "cmdline.h"
@@ -14,6 +16,8 @@ using namespace _bson;
 /** accepts optinally a top level array of documents [ {}, ... ]
 */
 void go() {
+    _setmode(_fileno(stdout), _O_BINARY);
+
     bool started = false;
     bool isArray = false;
     bool readyForComma = false;
@@ -41,7 +45,7 @@ void go() {
                 }
             }
             if (ch == ']' && isArray ) {
-                cerr << "DEBUG GOT ]" << endl;
+                //cerr << "DEBUG GOT ]" << endl;
                 cin.get();
                 isArray = readyForComma = false;
                 continue;
