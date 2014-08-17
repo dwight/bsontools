@@ -4,8 +4,7 @@
 #include <memory>
 #include <iostream>
 #include <string>
-#include "io.h"
-#include <fcntl.h>
+#include "binary.h"
 #include "../../../bson-cxx/src/bson/json.h"
 #include "../../../bson-cxx/src/bson/bsonobjbuilder.h"
 #include "cmdline.h"
@@ -16,7 +15,7 @@ using namespace _bson;
 /** accepts optinally a top level array of documents [ {}, ... ]
 */
 void go() {
-    _setmode(_fileno(stdout), _O_BINARY);
+    binaryStdOut();
 
     bool started = false;
     bool isArray = false;
@@ -60,7 +59,7 @@ void go() {
     }
 done:
     if (isArray) {
-        throw std::exception("expected ']' at end of file?");
+        throw bsontool_error("expected ']' at end of file?");
     }
     return;
 }
@@ -83,7 +82,7 @@ bool parms(cmdline& c) {
 #endif
         cout << "\t$ bson print < out.bson\n";
         cout << "\t{ x: 3}\n";
-        cout << "\t{ y: 2}\n";
+        cout << "\t{ y: 2}\n\n";
         return true;
     }
     return false;

@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <fstream>
+#include "binary.h"
 
 /** read BSON documents from stdin.  handles binary mode and such for the class user. */
 class StdinDocReader {
@@ -41,7 +42,7 @@ private:
 public:
     StdinDocReader(istream& s = std::cin) : stream(s) {
         if (&s == &std::cin) {
-            _setmode(_fileno(stdin), _O_BINARY);
+            binaryStdIn();
         }
     }
 protected:
@@ -109,7 +110,7 @@ private:
 public:
     DocReader(istream& s) : stream(s) {
         if (&s == &std::cin) {
-            _setmode(_fileno(stdin), _O_BINARY);
+            binaryStdIn();
         }
     }
 

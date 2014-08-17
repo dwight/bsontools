@@ -1,8 +1,7 @@
 #include <memory>
 #include <iostream>
 #include "stdio.h"
-#include "fcntl.h"
-#include "io.h"
+#include "binary.h"
 #include "../../../bson-cxx/src/bson/hex.h"
 #include "../../../bson-cxx/src/bson/endian.h"
 #include "cmdline.h"
@@ -28,8 +27,8 @@ int main(int argc, char* argv[])
 
     bool raw = c.got("raw");
 
-    int result = _setmode(_fileno(stdin), _O_BINARY);
-
+    binaryStdIn();
+    
     // warning: this code is pretty spaghetti as i was just prototyping / iterating 
     //          and this is just a very minor utility so didn't care.
     char ch;

@@ -1,6 +1,5 @@
 #include <memory>
-#include "io.h"
-#include <fcntl.h>
+#include "binary.h"
 #include <iostream>
 #include <string>
 #include "../../../bson-cxx/src/bson/json.h"
@@ -80,7 +79,7 @@ bool getl(vector<string> &line, istream& cin) {
         if (*p == 0) {
             break;
         }
-        throw std::exception("error: expected comma or end of line (after quote?)");
+        throw bsontool_error("error: expected comma or end of line (after quote?)");
     }
 
     return true;
@@ -131,13 +130,13 @@ void appendAsNumber(bsonobjbuilder& b, const string &f, const char *p) {
 /** accepts optinally a top level array of documents [ {}, ... ]
 */
 void go() {
-    _setmode(_fileno(stdout), _O_BINARY);
+    binaryStdOut();
 
     if (header) {
         getHeader();
     }
     if (fields.empty())
-        throw std::exception("no fieldnames specified or found");
+        throw bsontool_error("no fieldnames specified or found");
 
     vector<string> line;
     while (1) {
@@ -159,7 +158,7 @@ void go() {
                 {
                     StatusWith<Date_t> dateRet = dateFromISOString(v);
                     if (!dateRet.isOK()) {
-                        throw std::exception("couldn't parse data string");
+                        throw bsontool_error("couldn't parse data string");
                     }
                     b.appendDate(f, dateRet.getValue());
                     break;
@@ -192,7 +191,7 @@ void go() {
                     b.append(f, v);
                     break;
                 default:
-                    throw std::exception("unexpected type (-t) encountered");
+                    throw bsontool_error("unexpected type (-t) encountered");
                 }
             }
             bsonobj o = b.obj();
@@ -224,7 +223,7 @@ bool parms(cmdline& c) {
         cout << "  f               float (double)\n";
         cout << "  d               date - parsed as an ISO date string\n";
         cout << "\nExample:\n\n";
-        cout << "  fromcsv -f name,age,city,state -t tntt < file.csv > file.bson\n";
+        cout << "  fromcsv -f name,age,city,state -t tntt < file.csv > file.bson\n\n";
         return true;
     }
     if (c.got("T")) {
@@ -234,7 +233,7 @@ bool parms(cmdline& c) {
     string s = c.getStr("f");
     if (!s.empty()) {
         if (header)
-            throw std::exception("can't specify both -H and -f");
+            throw bsontool_error("can't specify both -H and -f");
         cerr << "-f " << s << endl;
         istringstream ss(s);
         getl(fields, ss);

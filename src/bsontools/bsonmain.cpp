@@ -1,7 +1,6 @@
 #include <iostream>
 #include <fstream>
-#include "io.h"
-#include <fcntl.h>
+#include "binary.h"
 #include "../../../bson-cxx/src/bson/bsonobj.h"
 #include "../../../bson-cxx/src/bson/bsonobjiterator.h"
 #include "../../../bson-cxx/src/bson/bsonobjbuilder.h"
@@ -26,7 +25,7 @@ namespace bsontools {
         bsonobj obj() const { return bsonobj(buf.c_str()); }
     };
 
-    void write(bsonobj& o, long long docNumber = -1) {
+    void write(const bsonobj& o, long long docNumber = -1) {
         if (emitDocNumber && docNumber >= 0)
             cout << docNumber << '\n';
         else
@@ -76,7 +75,7 @@ namespace bsontools {
     };
 
     template<typename T>
-    void descend(bsonobj& o, T& f) {
+    void descend(const bsonobj& o, T& f) {
         bsonobjiterator i(o);
         while (i.more()) {
             bsonelement e = i.next();
@@ -154,7 +153,7 @@ namespace bsontools {
     public:
         int N = 10;
         tail() {
-            _setmode(_fileno(stdout), _O_BINARY);
+            binaryStdOut(); 
         }
     };
 
@@ -168,7 +167,7 @@ namespace bsontools {
     public:
         int N = 10;
         sample() {
-            _setmode(_fileno(stdout), _O_BINARY);
+            binaryStdOut(); 
         }
     };
 
@@ -190,7 +189,7 @@ namespace bsontools {
         }
     public:
         vector<string>fields;
-        project() { _setmode(_fileno(stdout), _O_BINARY); }
+        project() { binaryStdOut(); }
     };
 
     class del : public StdinDocReader {
@@ -213,7 +212,7 @@ namespace bsontools {
         }
     public:
         string fieldName;
-        del() { _setmode(_fileno(stdout), _O_BINARY); }
+        del() { binaryStdOut(); }
     };
 
     class demote : public StdinDocReader {
@@ -225,7 +224,7 @@ namespace bsontools {
         }
     public:
         string fieldName;
-        demote() { _setmode(_fileno(stdout), _O_BINARY); }
+        demote() { binaryStdOut(); }
     };
 
     void merge(istream& _a, istream& _b) {
@@ -266,7 +265,7 @@ namespace bsontools {
         }
     public:
         string fieldName;
-        promote() { _setmode(_fileno(stdout), _O_BINARY); }
+        promote() { binaryStdOut(); }
     };
 
     class head : public StdinDocReader {
@@ -280,7 +279,7 @@ namespace bsontools {
     public:
         int N = 10;
         head() {
-            _setmode(_fileno(stdout), _O_BINARY);
+            binaryStdOut(); 
         }
     };
 
@@ -327,7 +326,7 @@ namespace bsontools {
             sample s;
             int x = c.getNum("n");
             if (x < 1)
-                throw std::exception("bad or missing -n argument");
+                throw bsontool_error("bad or missing -n argument");
             s.N = x;
             s.go();
         }
@@ -401,7 +400,7 @@ void strSplit(vector<string> &line, const string& str) {
                     break;
                 }
                 else {
-                    throw std::exception("expected quote");
+                    throw bsontool_error("expected quote");
                 }
             }
             else {
@@ -416,7 +415,7 @@ void strSplit(vector<string> &line, const string& str) {
         if (*p == 0) {
             break;
         }
-        throw std::exception("error: expected comma or end of line (after quote?)");
+        throw bsontool_error("error: expected comma or end of line (after quote?)");
     }
 }
 
