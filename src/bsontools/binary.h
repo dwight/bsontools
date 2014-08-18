@@ -10,7 +10,7 @@ inline void binaryStdIn() {
 #if !defined(_WIN32)
     freopen(NULL, "rb", stdin);
 #else
-    _setmode(fileno(stdin), _O_BINARY);
+    _setmode(_fileno(stdin), _O_BINARY);
 #endif
 }
 
