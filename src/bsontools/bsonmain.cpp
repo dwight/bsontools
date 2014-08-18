@@ -16,7 +16,8 @@ void strSplit(vector<string> &line, const string& str);
 
 namespace bsontools {
 
-    bool emitDocNumber = false; 
+    bool emitDocNumber = false; // -# option emits doc # instead of BSON content
+    bool emitNull = false;
 
     class bsonobjholder {
         string buf;
@@ -215,17 +216,71 @@ namespace bsontools {
         del() { binaryStdOut(); }
     };
 
-    class demote : public StdinDocReader {
+    /** helper class to specialize from */
+    class bsonpipe;
+    map<string,bsonpipe*> verbs;
+    class bsonpipe : public StdinDocReader {
+    protected:
+        void write(const bsonobj& o) {
+            bsontools::write(o, nDocs());
+        }
+        // things to override
+        virtual bool binaryOutput()     { return true; }
+        virtual void finished()         { } 
+        virtual bool doc(bsonobj&) = 0;
+    public:
+        virtual void init(cmdline&)     { }
+        virtual string help() = 0;
+        explicit bsonpipe(string name) {
+            assert(!name.empty());
+            verbs.insert(pair<string, bsonpipe*>(name, this));
+        }
+        virtual void go() {
+            if (binaryOutput() && !emitDocNumber)
+                binaryStdOut();
+            StdinDocReader::go();
+        }
+    };
+
+    class pull : public bsonpipe {
+        virtual string help() {
+            return "pull <fieldname>            extract a single field as a singleton element in output documents.  dot notation ok.";
+        }
+        virtual bool doc(bsonobj& b) {
+            bsonobjbuilder bldr;
+            bsonelement e = b.getFieldDotted(fieldName);
+            if (!e.eoo())
+                bldr.append(e);
+            else if (emitNull)
+                bldr.appendNull(fieldName);
+            write(bldr.obj());
+            return true;
+        }
+        string fieldName;
+        virtual void init(cmdline& c) {
+            fieldName = c.second();
+        }
+    public:
+        pull() : bsonpipe("pull") {}
+    } _pull;
+
+    class demote : public bsonpipe {
+        virtual string help() {
+            return "demote <fieldname>          put each document inside a field named fieldname, then output";
+        }
         virtual bool doc(bsonobj& b) {
             bsonobjbuilder bldr;
             bldr.append(fieldName, b);
-            write(bldr.obj(), nDocs());
+            write(bldr.obj());
             return true;
         }
-    public:
         string fieldName;
-        demote() { binaryStdOut(); }
-    };
+        void init(cmdline& c) {
+            fieldName = c.second();
+        }
+    public:
+        demote() : bsonpipe("demote") {}
+    } _demote;
 
     void merge(istream& _a, istream& _b) {
         DocReader a(_a);
@@ -285,6 +340,15 @@ namespace bsontools {
 
     int go(cmdline& c) {
         string s = c.first();
+        {
+            auto i = verbs.find(s);
+            if (i != verbs.end()) {
+                i->second->init(c);
+                i->second->go();
+                return 0;
+            }
+        }
+
         if (s == "head") {
             head h;
             int x = c.getNum("n");
@@ -316,11 +380,6 @@ namespace bsontools {
                 exit(1);
             }
             merge(cin, f);
-        }
-        else if (s == "demote") {
-            demote x;
-            x.fieldName = c.second();
-            x.go();
         }
         else if (s == "sample") {
             sample s;
@@ -436,6 +495,7 @@ bool parms(cmdline& c) {
         cout << "Options:\n";
         cout << "  -h                          for help\n";
         cout << "  -#                          emit document number instead of the document's bson content\n";
+        cout << "  -N                          emit null rather than nothing, when applicable (eg w/pull)\n";
         cout << "\n";
         cout << "Verbs:\n";
         cout << "  count                       output # of documents in file, then size in bytes of largest document\n";
@@ -452,13 +512,16 @@ bool parms(cmdline& c) {
         cout << "  promote <fieldname>         pull out the subobject specified by fieldname and output it (only).\n";
         cout << "                              if the field is missing or not an object nothing will be output. Dot\n";
         cout << "                              notation is supported.\n";
-        cout << "  demote <fieldname>          put each document inside a field named fieldname, then output\n";
         cout << "  merge <filename>            merge bson stream stdin with bson file on cmd line.  should be same\n";
         cout << "                              number of documents in each input.\n";
+        for (auto i = bsontools::verbs.begin(); i != bsontools::verbs.end(); i++) {
+            cout << "  " << i->second->help() << '\n';
+        }
         cout << "\n";
         return true;
     }
-    bsontools::emitDocNumber = c.got("#"); 
+    bsontools::emitDocNumber = c.got("#");
+    bsontools::emitNull = c.got("N");
     return false;
 }
 
