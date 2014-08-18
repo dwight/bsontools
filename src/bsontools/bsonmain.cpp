@@ -63,12 +63,12 @@ namespace bsontools {
             s.reset();
         }
         bool operator() (bsonelement& x) {
-            if (x.isNumber()) {
+            if (x.type() == _bson::String) {
+                s << x.valuestr() << '\t';
+            }
+            else { // if (x.isNumber()) {
                 x.toString(s, false, false);
                 s << '\t';
-            }
-            else if (x.type() == _bson::String) {
-                s << x.valuestr() << '\t';
             }
             return true;
         }
@@ -119,7 +119,7 @@ namespace bsontools {
     class print : public StdinDocReader {
     public:
         virtual bool doc(bsonobj& b) {
-            cout << b.toString() << endl;
+            cout << b.toString(false,true) << endl;
             return true;
         }
     };
