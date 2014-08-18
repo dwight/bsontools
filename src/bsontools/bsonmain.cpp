@@ -242,9 +242,41 @@ namespace bsontools {
         }
     };
 
+    class unwind : public bsonpipe {
+        virtual string help() {
+            return "unwind <fieldname>          unwind array (or object) elements. dot notation ok.";
+        }
+        virtual bool doc(bsonobj& b) {
+            bsonelement e = b.getFieldDotted(fieldName);
+            if (e.isObject() ) {
+                bsonobjiterator i( e.object() );
+                while (i.more()) {
+                    bsonobjbuilder bldr;
+                    bldr.appendAs(i.next(), fieldName);
+                    write(bldr.obj());
+                }
+            }
+            else if (emitNull) {
+                bsonobjbuilder bldr;
+                bldr.appendNull(fieldName);
+                write(bldr.obj());
+            }
+            else {
+                //write(bsonobj());
+            }
+            return true;
+        }
+        string fieldName;
+        virtual void init(cmdline& c) {
+            fieldName = c.second();
+        }
+    public:
+        unwind() : bsonpipe("unwind") {}
+    } _unwind;
+
     class pull : public bsonpipe {
         virtual string help() {
-            return "pull <fieldname>            extract a single field as a singleton element in output documents.  dot notation ok.";
+            return "pull <fieldname>            extract a single field as a singleton element in output documents. dot notation ok.";
         }
         virtual bool doc(bsonobj& b) {
             bsonobjbuilder bldr;
