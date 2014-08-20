@@ -6,6 +6,7 @@
 #include "../../../bson-cxx/src/bson/bsonobjbuilder.h"
 #include "cmdline.h"
 #include <deque>
+#include <map>
 
 using namespace std;
 using namespace _bson;
@@ -33,13 +34,45 @@ namespace bsontools {
             cout.write(o.objdata(), o.objsize());
     }
 
+    // infer ---------------------------------------------
+#if 0
+    class Infer {
+        struct node {
+            string fieldName;
+            unsigned types[128];
+            node *child;
+            node() : child(0) {
+                for (unsigned i = 0; i < 128; i++) types[i] = 0;
+            }
+        };
+        
+        map<string, node> nodes;
+    public:
+        void doElem(bsonelement& e, string path) {
+            node& n = nodes[path];
+            n.fieldName = e.fieldName();
+        }
+        void go(bsonobj o, string path = "") {
+            node& us = nodes[path];
+            bsonobjiterator i(o);
+            while (i.more()) {
+                bsonelement e = i.next();
+                string p = path + '.' + e.fieldName;
+                doElem(e, p);
+            }
+        }
+    };
+#endif
+
+    /** ----- functors we use when traversing a heirarchy with descent(). */
+
     class GrepElem {
     public:
         bool i = false;
         string target;
         bool matched = false;
         void reset() { matched = false;  }
-        void operator() (bsonelement& x) {
+        void operator() (bsonelement& x, const bsonobj &parent) {
             string s;
             const char *p;
             if (x.isNumber()) {
@@ -62,7 +95,7 @@ namespace bsontools {
         void reset() {
             s.reset();
         }
-        bool operator() (bsonelement& x) {
+        bool operator() (bsonelement& x, const bsonobj &parent) {
             if (x.type() == _bson::String) {
                 s << x.valuestr() << '\t';
             }
@@ -75,6 +108,7 @@ namespace bsontools {
         StringBuilder s;
     };
 
+    // descent an object's contents recursively.
     template<typename T>
     void descend(const bsonobj& o, T& f) {
         bsonobjiterator i(o);
@@ -84,7 +118,7 @@ namespace bsontools {
                 descend(e.object(),f);
             }
             else {
-                f(e);
+                f(e, o);
             }
         }
     }
