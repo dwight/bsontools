@@ -184,17 +184,40 @@ namespace bsontools {
         obj top;
         dom() : top("top") {}
     };
+    
+    bool anArrayFieldName(const char *p) {
+        if (*p == '0' && p[1] == 0) {
+            // special case, we process that one for inference purposes
+            return false;
+        }
+        if (*p == 0)
+            return false;
+        while (*p) {
+            if (!isdigit(*p))
+                return false;
+            p++;
+        }
+        return true;
+    }
 
-    void go(const bsonobj& o, dom::obj& n) {
+    void go(const bsonobj& o, dom::obj& n, bool arr = false) {
         bsonobjiterator i(o);
         while (i.more()) {
             bsonelement e = i.next();
-            if (!e.isObject()) {
-                n.addSimple(e.fieldName(), e.type());
+            if (!e.isObject() ) {
+                const char *p = e.fieldName();
+                if (!arr || !anArrayFieldName(p)) {
+                    n.addSimple(p, e.type());
+                }
+                else {
+                    // we don't want a type report for every array element position! 
+                    // thus this.
+                    n.addSimple("0", e.type());
+                }
             }
             else {
                 dom::obj& x = n.addObj(e.fieldName(), e.type());
-                go(e.object(), x);
+                go(e.object(), x, e.type() == Array);
             }
         }
     }
