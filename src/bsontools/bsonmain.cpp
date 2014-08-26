@@ -7,6 +7,7 @@
 #include "cmdline.h"
 #include <deque>
 #include <map>
+#include <memory>
 
 using namespace std;
 using namespace _bson;
@@ -35,33 +36,86 @@ namespace bsontools {
     }
 
     // infer ---------------------------------------------
-#if 0
-    class Infer {
-        struct node {
+
+    typedef vector<unsigned> Val;
+
+    // this is an experimental / prototype dom thing.  some aspects are inefficient as still just experimenting
+    class dom {
+    public:
+        class node {
+        public:
+            node(string s) : fieldName(s) {}
             string fieldName;
-            unsigned types[128];
-            node *child;
-            node() : child(0) {
-                for (unsigned i = 0; i < 128; i++) types[i] = 0;
+            virtual void emit(bsonobjbuilder& b) = 0;
+        };
+        class simple : public node {
+        public:
+            simple(string s) : node(s){}
+            Val val;
+            void emit(bsonobjbuilder& b) {
+                b.append(fieldName, 1);
             }
         };
-        
-        map<string, node> nodes;
-    public:
-        void doElem(bsonelement& e, string path) {
-            node& n = nodes[path];
-            n.fieldName = e.fieldName();
-        }
-        void go(bsonobj o, string path = "") {
-            node& us = nodes[path];
-            bsonobjiterator i(o);
-            while (i.more()) {
-                bsonelement e = i.next();
-                string p = path + '.' + e.fieldName;
-                doElem(e, p);
+        class obj : public node {
+            bool have(const string& fieldName) {
+                return fields.count(fieldName) > 0;
+            }
+            map<string,node*> fields;
+            vector< unique_ptr<node> > children;
+        public:
+            obj(string s) : node(s) {}
+            const vector< unique_ptr<node> >& getChildren() const {
+                return children;
+            }
+            void emit(bsonobjbuilder& b) {
+                bsonobjbuilder sub(b.subobjStart(fieldName));
+                for (auto i = children.begin(); i != children.end(); i++) {
+                    node* n = i->get();
+                    n->emit(sub);
+                }
+                sub.done();
+            }
+            void addSimple(string fieldName) {
+                if (!have(fieldName)) {
+                    simple *s = new simple(fieldName);
+                    fields[fieldName] = s;
+                    children.push_back(unique_ptr<node>(s));
+                }
+            }
+            obj& addObj(string fieldName) {
+                node *o = fields[fieldName];
+                if (o == 0) {
+                    o = new obj(fieldName);
+                    fields[fieldName] = o;
+                    children.push_back(unique_ptr<node>(o));
+                }
+                return *((obj *)o);
+            }
+        };
+        obj top;
+        dom() : top("top") {}
+    };
+
+#if 1
+    dom d;
+
+    void go(const bsonobj& o, dom::obj& n) {
+        bsonobjiterator i(o);
+        while (i.more()) {
+            bsonelement e = i.next();
+            if (!e.isObject()) {
+                n.addSimple(e.fieldName());
+            }
+            else {
+                dom::obj& x = n.addObj(e.fieldName());
+                go(e.object(), x);
             }
         }
-    };
+    }
+
+    void infer_go(bsonobj o) {
+        go(o, d.top);
+    }
 #endif
 
     /** ----- functors we use when traversing a heirarchy with descent(). */
@@ -276,14 +330,33 @@ namespace bsontools {
         }
     };
 
+    class infer : public bsonpipe {
+        virtual string help() {
+            return "infer                       infer schema";
+        }
+        virtual bool doc(bsonobj& b) {
+            infer_go(b);
+            return true;
+        }
+        virtual void init(cmdline& c) {
+        }
+        void finished() {
+            bsonobjbuilder b;
+            d.top.emit(b);
+            write(b.obj());
+        }
+    public:
+        infer() : bsonpipe("infer") {}
+    } _infer;
+
     class unwind : public bsonpipe {
         virtual string help() {
             return "unwind <fieldname>          unwind array (or object) elements. dot notation ok.";
         }
         virtual bool doc(bsonobj& b) {
             bsonelement e = b.getFieldDotted(fieldName);
-            if (e.isObject() ) {
-                bsonobjiterator i( e.object() );
+            if (e.isObject()) {
+                bsonobjiterator i(e.object());
                 while (i.more()) {
                     bsonobjbuilder bldr;
                     bldr.appendAs(i.next(), fieldName);
