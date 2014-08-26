@@ -35,9 +35,50 @@ namespace bsontools {
             cout.write(o.objdata(), o.objsize());
     }
 
+    /** helper class to specialize from when making a new command. */
+    class bsonpipe;
+    map<string, bsonpipe*> verbs;
+    class bsonpipe : public StdinDocReader {
+    protected:
+        void write(const bsonobj& o) {
+            bsontools::write(o, nDocs());
+        }
+        // things to override
+        virtual bool binaryOutput()     { return true; }
+        virtual void finished()         { }
+        virtual bool doc(bsonobj&) = 0;
+    public:
+        virtual void init(cmdline&)     { }
+        virtual string help() = 0;
+        explicit bsonpipe(string name) {
+            assert(!name.empty());
+            verbs.insert(pair<string, bsonpipe*>(name, this));
+        }
+        virtual void go() {
+            if (binaryOutput() && !emitDocNumber)
+                binaryStdOut();
+            StdinDocReader::go();
+        }
+    };
+
     // infer ---------------------------------------------
 
-    typedef vector<unsigned> Val;
+    const char *typestrs[] = {
+        "EOO",
+        "double",
+        "string",
+        "object", "array", "bindata", "undefined", "ObjectID", "bool", "date", "null", "regex",
+        "DBRef", "Code", "Symbol", "CodeWScope", "int32", "Timestamp", "int64"
+    };
+
+    bool hasWeirdChars(const string& s) {
+        for (auto i = s.begin(); i != s.end(); i++) {
+            char ch = *i;
+            if (ch < 48)
+                return true;
+        }
+        return false;
+    }
 
     // this is an experimental / prototype dom thing.  some aspects are inefficient as still just experimenting
     class dom {
@@ -47,11 +88,39 @@ namespace bsontools {
             node(string s) : fieldName(s) {}
             string fieldName;
             virtual void emit(bsonobjbuilder& b) = 0;
+            virtual void print(int) = 0;
+            set<BSONType> types;
+            void printType() {
+                cout << " : ";
+                for (auto i = types.begin(); i != types.end(); i++) {
+                    if (i != types.begin())
+                        cout << ',';
+                    int t = *i;
+                    if (t >= 0 && t <= JSTypeMax) {
+                        cout << typestrs[t];
+                    }
+                    else {
+                        cout << t;
+                    }
+                }
+            }
+            void printFieldname(int L) {
+                for (int i = -1; i < L; i++)
+                    cout << "  ";
+                if (hasWeirdChars(fieldName))
+                    cout << '"' << fieldName << '"';
+                else
+                    cout << fieldName;
+            }
         };
         class simple : public node {
         public:
             simple(string s) : node(s){}
-            Val val;
+            void print(int L) {
+                printFieldname(L);
+                printType();
+                cout << '\n';
+            }
             void emit(bsonobjbuilder& b) {
                 b.append(fieldName, 1);
             }
@@ -63,6 +132,23 @@ namespace bsontools {
             map<string,node*> fields;
             vector< unique_ptr<node> > children;
         public:
+            void print(int L) {
+                if (L >= 0) {
+                    printFieldname(L);
+                    printType();
+                    cout << ' ';
+                }
+                cout << "{\n";
+                for (auto i = children.begin(); i != children.end(); i++) {
+                    node* n = i->get();
+                    n->print(L+1);
+                }
+                {
+                    for (int i = -1; i < L; i++)
+                        cout << "  ";
+                    cout << "}\n";
+                }
+            }
             obj(string s) : node(s) {}
             const vector< unique_ptr<node> >& getChildren() const {
                 return children;
@@ -75,48 +161,67 @@ namespace bsontools {
                 }
                 sub.done();
             }
-            void addSimple(string fieldName) {
+            void addSimple(string fieldName, BSONType t) {
                 if (!have(fieldName)) {
                     simple *s = new simple(fieldName);
                     fields[fieldName] = s;
                     children.push_back(unique_ptr<node>(s));
                 }
+                (fields[fieldName])->types.insert(t);
             }
-            obj& addObj(string fieldName) {
+            obj& addObj(string fieldName, BSONType t) {
                 node *o = fields[fieldName];
                 if (o == 0) {
                     o = new obj(fieldName);
                     fields[fieldName] = o;
                     children.push_back(unique_ptr<node>(o));
                 }
-                return *((obj *)o);
+                obj *op = (obj *)o;
+                op->types.insert(t);
+                return *op;
             }
         };
         obj top;
         dom() : top("top") {}
     };
 
-#if 1
-    dom d;
-
     void go(const bsonobj& o, dom::obj& n) {
         bsonobjiterator i(o);
         while (i.more()) {
             bsonelement e = i.next();
             if (!e.isObject()) {
-                n.addSimple(e.fieldName());
+                n.addSimple(e.fieldName(), e.type());
             }
             else {
-                dom::obj& x = n.addObj(e.fieldName());
+                dom::obj& x = n.addObj(e.fieldName(), e.type());
                 go(e.object(), x);
             }
         }
     }
 
-    void infer_go(bsonobj o) {
-        go(o, d.top);
-    }
-#endif
+    class infer : public bsonpipe {
+        virtual string help() {
+            return "infer                       infer schema";
+        }
+        virtual bool doc(bsonobj& b) {
+            infer_go(b);
+            return true;
+        }
+        virtual void init(cmdline& c) {
+        }
+        void finished() {
+            /*bsonobjbuilder b;
+            d.top.emit(b);
+            write(b.obj());*/
+            d.top.print(-1);
+        }
+        dom d;
+    public:
+        void infer_go(bsonobj o) {
+            bsontools::go(o, d.top);
+        }
+        infer() : bsonpipe("infer") {}
+    } _infer;
 
     /** ----- functors we use when traversing a heirarchy with descent(). */
 
@@ -303,51 +408,6 @@ namespace bsontools {
         string fieldName;
         del() { binaryStdOut(); }
     };
-
-    /** helper class to specialize from */
-    class bsonpipe;
-    map<string,bsonpipe*> verbs;
-    class bsonpipe : public StdinDocReader {
-    protected:
-        void write(const bsonobj& o) {
-            bsontools::write(o, nDocs());
-        }
-        // things to override
-        virtual bool binaryOutput()     { return true; }
-        virtual void finished()         { } 
-        virtual bool doc(bsonobj&) = 0;
-    public:
-        virtual void init(cmdline&)     { }
-        virtual string help() = 0;
-        explicit bsonpipe(string name) {
-            assert(!name.empty());
-            verbs.insert(pair<string, bsonpipe*>(name, this));
-        }
-        virtual void go() {
-            if (binaryOutput() && !emitDocNumber)
-                binaryStdOut();
-            StdinDocReader::go();
-        }
-    };
-
-    class infer : public bsonpipe {
-        virtual string help() {
-            return "infer                       infer schema";
-        }
-        virtual bool doc(bsonobj& b) {
-            infer_go(b);
-            return true;
-        }
-        virtual void init(cmdline& c) {
-        }
-        void finished() {
-            bsonobjbuilder b;
-            d.top.emit(b);
-            write(b.obj());
-        }
-    public:
-        infer() : bsonpipe("infer") {}
-    } _infer;
 
     class unwind : public bsonpipe {
         virtual string help() {
