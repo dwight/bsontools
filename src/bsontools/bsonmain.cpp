@@ -81,6 +81,7 @@ namespace bsontools {
     }
 
     // this is an experimental / prototype dom thing.  some aspects are inefficient as still just experimenting
+    unsigned long long ndocs;
     class dom {
     public:
         class node {
@@ -89,18 +90,21 @@ namespace bsontools {
             string fieldName;
             virtual void emit(bsonobjbuilder& b) = 0;
             virtual void print(int) = 0;
-            set<BSONType> types;
+            map<BSONType, unsigned long long> typeOccurrences;
             void printType() {
                 cout << " : ";
-                for (auto i = types.begin(); i != types.end(); i++) {
-                    if (i != types.begin())
-                        cout << ',';
-                    int t = *i;
+                for (auto i = typeOccurrences.begin(); i != typeOccurrences.end(); i++) {
+                    if (i != typeOccurrences.begin())
+                        cout << ", ";
+                    int t = i->first;
                     if (t >= 0 && t <= JSTypeMax) {
                         cout << typestrs[t];
                     }
                     else {
                         cout << t;
+                    }
+                    if (i->second != ndocs) {
+                        cout << ' ' << (100*i->second) / ndocs<< '%';
                     }
                 }
             }
@@ -143,11 +147,9 @@ namespace bsontools {
                     node* n = i->get();
                     n->print(L+1);
                 }
-                {
-                    for (int i = -1; i < L; i++)
-                        cout << "  ";
-                    cout << "}\n";
-                }
+                for (int i = -1; i < L; i++)
+                    cout << "  ";
+                cout << "}\n";
             }
             obj(string s) : node(s) {}
             const vector< unique_ptr<node> >& getChildren() const {
@@ -167,7 +169,7 @@ namespace bsontools {
                     fields[fieldName] = s;
                     children.push_back(unique_ptr<node>(s));
                 }
-                (fields[fieldName])->types.insert(t);
+                (fields[fieldName])->typeOccurrences[t]++;
             }
             obj& addObj(string fieldName, BSONType t) {
                 node *o = fields[fieldName];
@@ -177,7 +179,7 @@ namespace bsontools {
                     children.push_back(unique_ptr<node>(o));
                 }
                 obj *op = (obj *)o;
-                op->types.insert(t);
+                op->typeOccurrences[t]++;
                 return *op;
             }
         };
@@ -236,6 +238,7 @@ namespace bsontools {
             /*bsonobjbuilder b;
             d.top.emit(b);
             write(b.obj());*/
+            ndocs = nDocs();
             d.top.print(-1);
         }
         dom d;
