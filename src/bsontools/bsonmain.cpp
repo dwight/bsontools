@@ -225,6 +225,7 @@ namespace bsontools {
     }
 
     class infer : public bsonpipe {
+        virtual bool binaryOutput()     { return false; }
         virtual string help() {
             return "infer                       infer schema";
         }
