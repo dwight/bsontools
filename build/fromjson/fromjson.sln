@@ -16,6 +16,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "bson", "..\bson\bson.vcxpro
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fromcsv", "..\fromcsv\fromcsv.vcxproj", "{8A26B3AF-95B8-44C0-8AEE-1C3108102466}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fromxml", "..\fromxml\fromxml.vcxproj", "{9AC09F80-F7ED-45B4-BAB1-48B75F4616F7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -38,6 +40,10 @@ Global
 		{8A26B3AF-95B8-44C0-8AEE-1C3108102466}.Debug|Win32.Build.0 = Debug|Win32
 		{8A26B3AF-95B8-44C0-8AEE-1C3108102466}.Release|Win32.ActiveCfg = Release|Win32
 		{8A26B3AF-95B8-44C0-8AEE-1C3108102466}.Release|Win32.Build.0 = Release|Win32
+		{9AC09F80-F7ED-45B4-BAB1-48B75F4616F7}.Debug|Win32.ActiveCfg = Debug|Win32
+		{9AC09F80-F7ED-45B4-BAB1-48B75F4616F7}.Debug|Win32.Build.0 = Debug|Win32
+		{9AC09F80-F7ED-45B4-BAB1-48B75F4616F7}.Release|Win32.ActiveCfg = Release|Win32
+		{9AC09F80-F7ED-45B4-BAB1-48B75F4616F7}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

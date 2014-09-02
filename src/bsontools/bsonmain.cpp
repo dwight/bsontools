@@ -713,7 +713,7 @@ void strSplit(vector<string> &line, const string& str) {
         if (*p == 0) {
             break;
         }
-        throw bsontool_error("error: expected comma or end of line (after quote?)"); b
+        throw bsontool_error("error: expected comma or end of line (after quote?)");
     }
 }
 
