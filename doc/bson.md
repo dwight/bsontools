@@ -1,8 +1,6 @@
 The "bson" utility program.
 
-bson -h for help.
-
-Usage:
+## Usage
 
   bson <options> <command> <parms>
 
@@ -66,9 +64,11 @@ for a match.  All matching documents are output (as BSON).
 Note: at the time of this writing, pattern can only be a simple text pattern, regular 
 expressions are NOT yet supported (but hopefully coming).
 
-### head [-n <N>]
+### head [-n <N>] [-s <S>]
 
 Output the first N documents in the file.  Output is BSON format.
+
+-s option: start at the specified document number (base zero).
 
 ### infer
 
@@ -116,9 +116,11 @@ or not an object nothing will be output for that document.
 
     $ bson promote associate.address < things.bson > addresses.bson
 
-### pull <fieldname>
+### pull [-N] <fieldname>
 
 Extract a single field as a singleton element and output.
+
+-N option: emit null rather than nothing, when applicable.
 
 Example:
         
@@ -172,6 +174,8 @@ delimited.  Field names are not output.  Numbers are output in their text repres
 
 Unwind an array of elements.  This is similar to the MongoDB $unwind operator.
 
+-N option: emit null rather than nothing, when applicable.
+
 Example:
 
     $ fromjson > a.bson
@@ -191,6 +195,12 @@ Example:
     { b: "zzz" }
     { b: 4 }
     { b: 7 }
+
+## Other Options
+
+-# option: tells the utility to output document numbers rather than the actual document as 
+output.  Simply used for troubleshooting; say, if you are getting an error mid-file and want 
+to track it down.
 
 ## Other Notes
 

@@ -550,15 +550,21 @@ namespace bsontools {
     };
 
     class head : public StdinDocReader {
-        int n = 0;
+        unsigned long long n = 0;
+        unsigned long long nOutput = 0;
         virtual bool doc(bsonobj& b) {
-            write(b, nDocs());
-            if (++n >= N)
-                done = true;
+            if (n >= startAt) {
+                write(b, nDocs());
+                nOutput++;
+                if (nOutput >= N)
+                    done = true;
+            }
+            n++;
             return true;
         }
     public:
-        int N = 10;
+        unsigned long long startAt = 0;
+        unsigned long long N = 10;
         head() {
             binaryStdOut(); 
         }
@@ -580,6 +586,10 @@ namespace bsontools {
             int x = c.getNum("n");
             if (x > 0) {
                 h.N = x;
+            }
+            int sa = c.getNum("s");
+            if (sa > 0) {
+                h.startAt = sa;
             }
             h.go();
         }
@@ -624,6 +634,9 @@ namespace bsontools {
             h.go();
         }
         else if (s == "print") {
+            if (emitDocNumber) {
+                throw bsontool_error("can't use -# option with print command");
+            }
             print x;
             x.go();
         }
@@ -700,7 +713,7 @@ void strSplit(vector<string> &line, const string& str) {
         if (*p == 0) {
             break;
         }
-        throw bsontool_error("error: expected comma or end of line (after quote?)");
+        throw bsontool_error("error: expected comma or end of line (after quote?)"); b
     }
 }
 
@@ -725,7 +738,7 @@ bool parms(cmdline& c) {
         cout << "\n";
         cout << "Verbs:\n";
         cout << "  count                       output # of documents in file, then size in bytes of largest document\n";
-        cout << "  head [-n <N>]               output the first N documents. (N=10 default)\n";
+        cout << "  head [-n <N>] [-s <S>]      output the first N documents. (N=10 default)\n";
         cout << "  tail [-n <N>]               note: current tail implementation is slow\n";
         cout << "  sample -n <N>               output every Nth document\n";
         cout << "  print                       convert bson to json (print json to stdout)\n";
