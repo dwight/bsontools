@@ -5,6 +5,7 @@
 #include "../../../bson-cxx/src/bson/json.h"
 #include "../../../bson-cxx/src/bson/bsonobjbuilder.h"
 #include "cmdline.h"
+#include "parse_types.h"
 
 using namespace std;
 using namespace _bson;
@@ -98,35 +99,6 @@ void getHeader() {
     getl(fields, cin);
 }
 
-void appendAsNumber(bsonobjbuilder& b, const string &f, const char *p) {
-    while (*p == ' ') p++;
-    bool flt = false;
-    {
-        const char *q = p;
-        if (*q == '-')
-            q++;
-        for (; *q; q++)
-            if (!isdigit(*q))
-                flt = true;
-    }
-    if (flt) {
-        double result = 0;
-        parseNumberFromString(p, &result);
-        b.appendNumber(f, result);
-    }
-    else {
-        long long n = 0;
-        parseNumberFromString(p, &n);
-        int x = (int)n;
-        if (x == n) {
-            b.appendNumber(f, x);
-        }
-        else {
-            b.appendNumber(f, n);
-        }
-    }
-}
-
 /** accepts optinally a top level array of documents [ {}, ... ]
 */
 void go() {
@@ -185,7 +157,7 @@ void go() {
                     break;
                 }
                 case 'n':
-                    appendAsNumber(b, f, v.c_str());
+                    appendAsNumberForce(b, f, v.c_str());
                     break;
                 case 't':
                     b.append(f, v);

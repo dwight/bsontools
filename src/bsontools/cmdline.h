@@ -20,6 +20,7 @@ class cmdline {
     std::vector<option> options; // -dash or --dash things
 public:
     std::vector<string> items;   // regular items on cmd line no dash
+
     cmdline(int argc, char* argv[], set<string> *optionsWithParameter = 0) : c(argc), v(argv) {
         for (int i = 1; i < argc; i++) {
             const char *p = argv[i];
@@ -46,6 +47,7 @@ public:
         }
     }
 
+    // get regular non-dashed arguments
     std::string first() {
         return items.empty() ? "" : *items.begin();
     }
@@ -54,6 +56,8 @@ public:
         return items.size() >= 2 ? items[1] : "";
     }
 
+    // get value from cmdline 
+    //   --PARMNAME VALUE
     string getStr(string parmName) {
         int res = -1;
         for (unsigned i = 0; i < options.size(); i++) {
@@ -64,12 +68,16 @@ public:
         return "";
     }
 
+    // e.g. get '10' from cmdline:
+    //   -n 10
+    // getNum("n")
     unsigned getNum(string parmName) {
         int res = -1;
         parseNumberFromString(getStr(parmName), &res);
         return res;
     }
 
+    // look for --someoption
     bool got(const char *s) {
         for (unsigned i = 0; i < options.size(); i++) {
             if (options[i].opt == s)

@@ -8,10 +8,15 @@
 #include "../../../bson-cxx/src/bson/json.h"
 #include "../../../bson-cxx/src/bson/bsonobjbuilder.h"
 #include "cmdline.h"
+#include "parse_types.h"
 
 using namespace std;
 using namespace _bson;
 
+struct Opts  {
+    bool autoNum = false;
+} opts;
+bool ignoreAttributes = false;
 unsigned line = 1;
 
 class parse_error : public std::exception {
@@ -21,7 +26,6 @@ public:
     const char *what() const throw() { return msg.c_str(); }
 };
 char BeginTag = '<';
-const char * EndTag = "/>";
 
 class parser {
     bool whiteSpace[256];
@@ -39,6 +43,41 @@ public:
     }
 private:
     istream& i;
+
+    void append(bsonobjbuilder& b, string f, string val) {
+        if (opts.autoNum) {
+            if (mightBeNumber(val.c_str())) {
+                if (appendAsNumber(b, f, val.c_str())) {
+                    return;
+                }
+            }
+        }
+        b.append(f, val);
+    }
+
+    char peek() { return i.peek(); }
+    bool has_peek(char c) {
+        return i.peek() == c;
+    }
+    void skip_ws() {
+        while (is_ws(i.peek())) {
+            i.get();
+        }
+    }
+    bool has_attributes() {
+        skip_ws();
+        char ch = i.peek();
+        return !(ch == '/' || ch == '>');
+    }
+    char get() {
+        char ch = i.get();
+        if (i.eof()) {
+            throw parse_error("unexpected EOF");
+        }
+        if (ch == '\n')
+            line++;
+        return ch;
+    }
     char getc_ws() {
         unsigned char ch;
         bool ws;
@@ -48,6 +87,7 @@ private:
         } while (ws);
         return ch;
     }
+    // get identifier, e.g. tag name, or attribute naem
     // <NAME ... />
     string get_name() {
         StringBuilder s;
@@ -56,12 +96,36 @@ private:
             char ch = i.peek();
             if (is_ws(ch))
                 break;
-            if (ch == '/' || ch == '>')
+            if (ch == '/' || ch == '>' || ch == '=' )
                 break;
-            s << ch; 
+            s << ch;
             i.get();
         }
         return s.str();
+    }
+    // get a string that may be quoted. e.g. value of an attribute
+    // <name f="VALUE" />
+    string get_value() {
+        skip_ws();
+        if (peek() == '"') {
+            StringBuilder s;
+            eat('"');
+            while (1) {
+                char ch = get();
+                // todo: escaping
+                if (ch == '"')
+                    break;
+                s << ch;
+            }
+            return s.str();
+        }
+        return get_name();
+    }
+    void eat(char s) {
+        char ch = get();
+        if (s != ch) {
+            throw parse_error(string("parse error got: ") + ch + " expected: " + s);
+        }
     }
     void eat(const char *s) {
         while (*s) {
@@ -86,28 +150,6 @@ private:
             i.putback(*s++);
         }
         return false;
-    }
-    bool has_peek(char c) {
-        return i.peek() == c;
-    }
-    void skip_ws() {
-        while (is_ws(i.peek())) {
-            i.get();
-        }
-    }
-    bool has_attributes() {
-        skip_ws();
-        char ch = i.peek();
-        return !(ch == '/' || ch == '>');
-    }
-    char get() {
-        char ch = i.get();
-        if (i.eof()) {
-            throw parse_error("unexpected EOF");
-        }
-        if (ch == '\n')
-            line++;
-        return ch;
     }
     bool is_begin_peek() {
     again:
@@ -158,43 +200,54 @@ public:
             throw parse_error("unexpected char, expected '<'");
         }
         string nm = get_name();
-        if (!has_attributes()) {
-            if (has(EndTag)) {
-                // <foo/> -- we could ignore or emit foo:null for the field
-                b.appendNull(nm);
-            }
-            else {
-                eat(">");
-                if (is_begin_peek()) {
-                    bsonobjbuilder nest;
-                    string lastFieldName;
-                    while (1) {
-                        // <foo><bar>99</bar><bar>33</bar></foo>
-                        //      ^
-                        bsonobjbuilder temp;
-                        go(temp);
-                        if (has("</"))
-                            break; // </foo>
-                        // arrays? 
-                    }
-                    b.append(nm, nest.obj());
-                    eat(nm.c_str());
-                    eat(">");
-                }
-                else {
-                    // <foo>99</foo>
-                    //      ^
-                    string s = get_char_data();
-                    b.append(nm, s);
-                    eat("</");
-                    eat(nm.c_str());
-                    eat(">");
-                }
+        bsonobjbuilder subbldr;
+        bsonobjbuilder *bldr = &b;
+        if (has_attributes()) {
+            // <foo attrib1=asdf ... >
+            bldr = &subbldr;
+            while (1) {
+                string f = get_name();
+                eat('=');
+                string v = get_value();
+                if ( !ignoreAttributes )
+                    append(*bldr,f, v);
+                skip_ws();
+                if (peek() == '/' || peek() == '>')
+                    break;
             }
         }
+        if (has("/>")) {
+            // <foo/> -- we could ignore or emit foo:null for the field (if no attributes)
+            //b.appendNull(nm);
+        }
         else {
-                // <foo attrib1=asdf ... >
-                throw parse_error("finish code");
+            eat(">");
+            if (is_begin_peek()) {
+                string lastFieldName;
+                bldr = &subbldr;
+                while (1) {
+                    // <foo><bar>99</bar><bar>33</bar></foo>
+                    //      ^
+                    go(subbldr);
+                    if (has("</"))
+                        break; // </foo>
+                    // arrays? 
+                }
+                eat(nm.c_str());
+                eat(">");
+            }
+            else {
+                // <foo>99</foo>
+                //      ^
+                string s = get_char_data();
+                append(*bldr, nm, s);
+                eat("</");
+                eat(nm.c_str());
+                eat(">");
+            }
+        }
+        if (bldr != &b) {
+            b.append(nm, subbldr.obj());
         }
         return true;
     }
@@ -223,9 +276,34 @@ bool parms(cmdline& c) {
     if (c.help()) {
         cout << "fromxml utility - convert XML input to BSON output\n\n";
         cout << "stdin should provide XML documents as input.\n\n";
-        cout << "  -ia       ignore attributes in tags\n";
-        cout << "  -i"
+        cout << "options:\n";
+        cout << "  -ia             ignore attributes in tags\n";
+        cout << "  -t options      how to handle types, see below\n";
+        cout << "\n";
+        cout << "options for the t parameter:\n";
+        cout << "  n               auto detect numbers\n";
+        /*
+        cout << "  s               auto detect small numbers only\n";
+        cout << "  i               make #s int32 when possible\n";
+        cout << "  l               make #s int64 when possible\n";
+        cout << "  f               float (double)\n";
+        cout << "  d               auto detect date types\n";
+        */
+        cout << "\n";
         return true;
+    }
+    ignoreAttributes = c.got("ia");
+    {
+        string t = c.getStr("t");
+        for (auto i = t.begin(); i != t.end(); i++) {
+            if (*i == 'n') {
+                opts.autoNum = true;
+            } 
+            else {
+                cerr << "unknown command line option in -t parameter" << endl;
+                return true;
+            }
+        }
     }
     return false;
 }
@@ -233,7 +311,8 @@ bool parms(cmdline& c) {
 int main(int argc, char* argv[])
 {
     try {
-        cmdline c(argc, argv);
+        set<string> optionsWithParameter = {"t"};
+        cmdline c(argc, argv, &optionsWithParameter);
         if( parms(c) )
             return 0;
         go();
