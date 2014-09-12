@@ -28,10 +28,15 @@ void appendAsNumberForce(bsonobjbuilder& b, const string &f, const char *p) {
     }
 }
 
-bool appendAsNumber(bsonobjbuilder& b, const string &f, const char *p) {
+struct Opts  {
+    bool autoNum = false;
+    bool floatPt = false;
+};
+
+bool appendAsNumber(bsonobjbuilder& b, const string &f, const char *p, const Opts& o) {
     while (*p == ' ') p++;
-    bool flt = false;
-    {
+    bool flt = o.floatPt;
+    if( !flt ) {
         const char *q = p;
         if (*q == '-')
             q++;

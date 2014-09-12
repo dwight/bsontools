@@ -17,8 +17,8 @@ public:
 class cmdline {
     int c;
     char **v;
-    std::vector<option> options; // -dash or --dash things
 public:
+    std::vector<option> options; // -dash or --dash things
     std::vector<string> items;   // regular items on cmd line no dash
 
     cmdline(int argc, char* argv[], set<string> *optionsWithParameter = 0) : c(argc), v(argv) {

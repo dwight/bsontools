@@ -9,15 +9,20 @@
 #include "../../../bson-cxx/src/bson/bsonobjbuilder.h"
 #include "cmdline.h"
 #include "parse_types.h"
+#include "../util/str.h"
+
+//#include "windows.h"
 
 using namespace std;
 using namespace _bson;
 
-struct Opts  {
-    bool autoNum = false;
-} opts;
+Opts opts;
 bool ignoreAttributes = false;
 unsigned line = 1;
+map<string, Opts*> fieldOptions;
+
+//#define debug(x) (cout << x ) << endl;
+#define debug(x) 
 
 class parse_error : public std::exception {
     const string msg;
@@ -45,9 +50,14 @@ private:
     istream& i;
 
     void append(bsonobjbuilder& b, string f, string val) {
-        if (opts.autoNum) {
+        const Opts *o = &opts;
+        auto i = fieldOptions.find(f);
+        if (i != fieldOptions.end()) {
+            o = i->second;
+        }
+        if (o->autoNum) {
             if (mightBeNumber(val.c_str())) {
-                if (appendAsNumber(b, f, val.c_str())) {
+                if (appendAsNumber(b, f, val.c_str(), *o)) {
                     return;
                 }
             }
@@ -72,6 +82,8 @@ private:
     char get() {
         char ch = i.get();
         if (i.eof()) {
+            debug("unexpected EOF ch:" << ch)
+            //DebugBreak();
             throw parse_error("unexpected EOF");
         }
         if (ch == '\n')
@@ -137,6 +149,7 @@ private:
         }
     }
     bool has(const char *s) {
+        skip_ws();
         const char *p = s;
         while (1) {
             if (*p == 0)
@@ -157,9 +170,11 @@ private:
         if (i.peek() != BeginTag)
             return false;
         i.get();
-        if (i.peek() == '!') {
-            // <!--  -->
+        // todo <!--  -->
+        char ch = i.peek();
+        if (ch == '!' || ch == '?' ) {
             // <!DOCTYPE >
+            // <?xml ... >
             while (get() != '>') {
                 ;
             }
@@ -182,12 +197,13 @@ private:
         return b.str();
     }
 public:
-    bool go(bsonobjbuilder& b) {        
+    bool go(bsonobjbuilder& b) {  
+        debug("\ngo")
         bool begin = false;
         try {
             begin = is_begin_peek();
             if (begin) {
-                get(); // consume
+                get(); // consume '<'
             }
         }
         catch (parse_error&) {
@@ -200,6 +216,7 @@ public:
             throw parse_error("unexpected char, expected '<'");
         }
         string nm = get_name();
+        debug("nm: " << nm)
         bsonobjbuilder subbldr;
         bsonobjbuilder *bldr = &b;
         if (has_attributes()) {
@@ -229,21 +246,36 @@ public:
                     // <foo><bar>99</bar><bar>33</bar></foo>
                     //      ^
                     go(subbldr);
-                    if (has("</"))
+                    if (has("</")) {
+                        debug("has </, break")
                         break; // </foo>
+                    }
+                    else {
+                        debug("no </, got " << peek())
+                    }
+                    skip_ws();
+                    debug("arrays? " << peek())
                     // arrays? 
                 }
+                debug("eat1 " << nm)
                 eat(nm.c_str());
+                debug("eat >")
                 eat(">");
+                debug("done2")
             }
             else {
                 // <foo>99</foo>
                 //      ^
                 string s = get_char_data();
+                debug("got " << s)
                 append(*bldr, nm, s);
+                debug("eat </")
                 eat("</");
+                debug("eat " << nm)
                 eat(nm.c_str());
+                debug("eat >")
                 eat(">");
+                debug("done1")
             }
         }
         if (bldr != &b) {
@@ -265,11 +297,30 @@ void go() {
         if (!p.go(b))
             break;
 
+        bsonobj o = b.obj();
+        cout.write(o.objdata(), o.objsize());
+
+        /*
         cout << "debug - Parsed to: " << endl;
         cout << b.obj().toString() << endl;
         cout << endl;
+        */
     }
-    cout << endl;
+}
+
+void parseOptions(Opts& opts, string t) {
+    for (auto i = t.begin(); i != t.end(); i++) {
+        if (*i == 'n') {
+            opts.autoNum = true;
+        }
+        else if (*i == 'f') {
+            opts.floatPt = true; 
+            opts.autoNum = true;
+        }
+        else {
+            throw std::exception("unknown command line option in -t parameter");
+        }
+    }
 }
 
 bool parms(cmdline& c) { 
@@ -277,31 +328,41 @@ bool parms(cmdline& c) {
         cout << "fromxml utility - convert XML input to BSON output\n\n";
         cout << "stdin should provide XML documents as input.\n\n";
         cout << "options:\n";
-        cout << "  -ia             ignore attributes in tags\n";
-        cout << "  -t options      how to handle types, see below\n";
+        cout << "  -ia                     ignore attributes in tags\n";
+        cout << "  -t typeoptions          how to handle types, see below\n";
+        cout << "  -f field=typeoptions    use typeoptions for field\n";
         cout << "\n";
-        cout << "options for the t parameter:\n";
-        cout << "  n               auto detect numbers\n";
+        cout << "typeoptions for the t and f parameter:\n";
+        cout << "  n                       auto detect numbers\n";
         /*
         cout << "  s               auto detect small numbers only\n";
         cout << "  i               make #s int32 when possible\n";
         cout << "  l               make #s int64 when possible\n";
-        cout << "  f               float (double)\n";
+        */
+        cout << "  f                       make numbers floating pointing point (even if whole)\n";
+        cout << "                          implies n option\n";
+        /*
         cout << "  d               auto detect date types\n";
         */
+        cout << "Examples:\n";
         cout << "\n";
+        cout << "  fromxml -t n < in.xml > out.bson\n";
+        cout << "  fromxml -f x=n < in.xml\n";
+        cout << "  fromxml -f x=n -f y=n -f z=f < in.xml | bson print\n\n";
         return true;
     }
     ignoreAttributes = c.got("ia");
     {
         string t = c.getStr("t");
-        for (auto i = t.begin(); i != t.end(); i++) {
-            if (*i == 'n') {
-                opts.autoNum = true;
-            } 
-            else {
-                cerr << "unknown command line option in -t parameter" << endl;
-                return true;
+        parseOptions(opts, t);
+        for (auto i = c.options.begin(); i != c.options.end(); i++) {
+            if (i->opt == "f") {
+                string field, cmdLineFOptionVal;
+                str::splitOn(i->value, '=', field, cmdLineFOptionVal);
+                assert(!cmdLineFOptionVal.empty());
+                Opts *x = new Opts();
+                parseOptions(*x, cmdLineFOptionVal);
+                fieldOptions[field] = x;
             }
         }
     }
@@ -311,7 +372,7 @@ bool parms(cmdline& c) {
 int main(int argc, char* argv[])
 {
     try {
-        set<string> optionsWithParameter = {"t"};
+        set<string> optionsWithParameter = {"t", "f"};
         cmdline c(argc, argv, &optionsWithParameter);
         if( parms(c) )
             return 0;

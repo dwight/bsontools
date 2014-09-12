@@ -1,0 +1,11 @@
+<foo>asdf</foo>
+<foo x=33.3>asdf</foo>
+<blah>asdfasdfasdfasffds</blah>
+<z />
+<a><b>3</b><c>asdf</c></a>
+<!-- asdf -->
+<!DOCTYPE asdf>
+<arr><a>3</a><a>7</a></arr>
+<foo x=lalala y="hello world">asdf</foo>
+<foo x=lalala y="hello world" />
+
