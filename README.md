@@ -3,6 +3,7 @@ These are simple utilities for manipulation of bson documents.
 bson     - main utility.  Try bson --help
 fromjson - convert JSON to BSON
 fromcsv  - convert CSV to BSON
+fromxml  - convert XML to BSON
 hex      - hex dump of any input, with a tiny bit of bson format awareness.  
            also provided as a convenience for any OS where 'hexdump' is not already present.
 
