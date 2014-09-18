@@ -9,4 +9,4 @@
 <foo x=lalala y="hello world">asdf</foo>
 <foo x=lalala y="hello world" />
 <foo_-9: />
-
+<foo>hi &quot;there&quot;</foo>

@@ -45,6 +45,7 @@ public:
         whiteSpace['\t'] = true;
         whiteSpace['\r'] = true;
         whiteSpace['\n'] = true;
+        init();
     }
 private:
     istream& i;
@@ -115,6 +116,36 @@ private:
         }
         return s.str();
     }
+    map<string, char> escapes;
+    void init() {
+        escapes["amp"] = '&';
+        escapes["quot"] = '"';
+        escapes["apos"] = '\'';
+        escapes["lt"] = '<';
+        escapes["gt"] = '>';
+    }
+    string unescape(string s) {
+        if (!(str::contains(s, '&') && str::contains(s, ';'))) {
+            return s;
+        }
+        StringBuilder b;
+        const char *p = s.c_str();
+        while (*p) {
+            if (*p == '&') {
+                string x(p + 1);
+                string l, r;
+                str::splitOn(x, ';', l, r);
+                map<string,char>::const_iterator i = escapes.find(l);
+                if (i != escapes.end()) {
+                    b << i->second;
+                    p += l.size() + 2;
+                    continue;
+                }
+            }
+            b << *p++;
+        }
+        return b.str();
+    }
     // get a string that may be quoted. e.g. value of an attribute
     // <name f="VALUE" />
     string get_value() {
@@ -129,9 +160,9 @@ private:
                     break;
                 s << ch;
             }
-            return s.str();
+            return unescape(s.str());
         }
-        return get_name();
+        return unescape(get_name());
     }
     void eat(char s) {
         char ch = get();
@@ -194,9 +225,11 @@ private:
             b << ch;
             get();
         }
-        return b.str();
+        return unescape(b.str());
     }
 public:
+    // see 
+    // http://cs.lmu.edu/~ray/notes/xmlgrammar/
     bool go(bsonobjbuilder& b) {  
         debug("\ngo")
         bool begin = false;
