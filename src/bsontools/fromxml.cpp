@@ -235,7 +235,7 @@ public:
         }
         if (has("/>")) {
             // <foo/> -- we could ignore or emit foo:null for the field (if no attributes)
-            //b.appendNull(nm);
+            b.appendNull(nm);
         }
         else {
             eat(">");

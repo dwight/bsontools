@@ -8,4 +8,5 @@
 <arr><a>3</a><a>7</a></arr>
 <foo x=lalala y="hello world">asdf</foo>
 <foo x=lalala y="hello world" />
+<foo_-9: />
 
