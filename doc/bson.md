@@ -102,6 +102,9 @@ each input file.
     $ bson print < mydata.bson
     *json output is displayed...*
 
+    $ bson print pretty < mydata.bson
+    *json output is displayed with indentation and line feeds...*
+
 ### project <fieldnamelist>
 
 Do projection on the input BSON, outputing the result.  Only top level field names may be 

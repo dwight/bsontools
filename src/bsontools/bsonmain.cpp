@@ -337,10 +337,40 @@ namespace bsontools {
     };
 
     class print : public StdinDocReader {
+        bool _pretty;
+        void pretty(bsonobj& b, string indent="") {
+            bsonobjiterator i(b);
+            cout << "{\n";
+            while (i.more()) {
+                bsonelement e = i.next();
+                if (e.isObject()) {
+                    cout << indent << "  " << e.fieldName() << ": ";
+                    string s = indent + "  ";
+                    pretty(e.object(), s);
+                }
+                else {
+                    cout << indent << "  " << e.toString(true, true);
+                    if (i.more())
+                        cout << ',';
+                    cout << '\n';
+                }
+            }
+            cout << indent << "}\n";
+        }
     public:
         virtual bool doc(bsonobj& b) {
-            cout << b.toString(false,true) << endl;
+            if (_pretty) {
+                pretty(b);
+            }
+            else {
+                cout << b.toString(false, true);
+            }
+            cout << endl;
             return true;
+        }
+        void go(cmdline& c) {
+            _pretty = c.second() == "pretty";
+            StdinDocReader::go();
         }
     };
 
@@ -638,7 +668,7 @@ namespace bsontools {
                 throw bsontool_error("can't use -# option with print command");
             }
             print x;
-            x.go();
+            x.go(c);
         }
         else if (s == "text") {
             text t;
@@ -741,7 +771,7 @@ bool parms(cmdline& c) {
         cout << "  head [-n <N>] [-s <S>]      output the first N documents. (N=10 default)\n";
         cout << "  tail [-n <N>]               note: current tail implementation is slow\n";
         cout << "  sample -n <N>               output every Nth document\n";
-        cout << "  print                       convert bson to json (print json to stdout)\n";
+        cout << "  print [pretty]              convert bson to json (print json to stdout)\n";
         cout << "  text                        extract text values and output (no fieldnames)\n";
         cout << "  grep <pattern>              text search each document for a simple text pattern. Not actual\n";
         cout << "                              regular expressions yet. outputs matched documents.  Element values\n";
