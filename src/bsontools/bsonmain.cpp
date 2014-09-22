@@ -338,7 +338,7 @@ namespace bsontools {
 
     class print : public StdinDocReader {
         bool _pretty;
-        void pretty(bsonobj& b, string indent="") {
+        void pretty(const bsonobj& b, string indent="") {
             bsonobjiterator i(b);
             cout << "{\n";
             while (i.more()) {
