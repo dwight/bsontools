@@ -2,7 +2,7 @@ The "bson" utility program.
 
 ## Usage
 
-  bson <options> <command> <parms>
+  bson \<options> \<command> \<parms>
 
 Options:
 
@@ -212,6 +212,5 @@ to track it down.
 
 ## Other Notes
 
-You can use the regular Unix 'cat' utility to concatenate BSON files, as it simply concatenates
-streams of bytes.
+* You can use the regular Unix 'cat' utility to concatenate BSON files, as it simply concatenates streams of bytes.
 
