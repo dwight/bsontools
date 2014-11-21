@@ -40,4 +40,10 @@ Send a pull request on github, thanks. We'll pull in things that we think fit al
 
 Some automated tests would be real helpful for example...
 
+## Support
+
+For help try posting to the [BSON Google Groups forum](https://groups.google.com/forum/#!forum/bson).
+
+
+
 
