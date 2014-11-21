@@ -5,11 +5,16 @@ The "bson" utility program.
   bson <options> <command> <parms>
 
 Options:
-  -h                          for help
-  -#                          emit document number instead of the document's bson content
-  -N                          emit null rather than nothing, when applicable (eg w/pull)
 
-The bson utility performs many different operations; these are specified by the <command> 
+	-h                          for help
+	-#                          emit document number instead of the document's 
+								 bson content
+	-N                          emit the null value rather than omitting a
+								 missing field, when applicable 
+								 (e.g. with the pull command)
+	
+
+The bson utility performs many different operations; these are specified by the \<command> 
 parameter.  Typically, the utility takes a stream of BSON from stdin, and writes BSON to 
 stdout.  However, in some cases, it outputs text, for example, the print verb/command does
 that.
