@@ -26,6 +26,10 @@ With Visual Studio, start by opening build/fromjson/fronjson.sln. The tools have
 As written, these tools lightly use C++11.  This is mainly to avoid any external dependencies; for 
 example unique_ptr is used from C++11. The usage is light enough you should not need a very new compiler. It would not be hard to adapt back to C++03. Use `-std=c++0x` on the command line, which the SConscript file does for you...
 
+### Prebuilt binaries
+
+Some can be found at [https://github.com/dwight/binaries](https://github.com/dwight/binaries).
+
 ## Licence
 
 Apache 2.0.
