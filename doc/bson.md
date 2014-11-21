@@ -23,13 +23,13 @@ Count number of documents in the BSON file.  Also prints out the size of the lar
     $ bson count < file.bson
     302    12800
 
-### del <fieldname>
+### del \<fieldname>
 
 Delete a top level field and then reoutput the stream.
 
     $ bson del card_number < records.bson > redacted.bson
 
-### demote <fieldname>
+### demote \<fieldname>
 
 Wrap each document inside a field named <fieldname>, then output.
 
@@ -54,7 +54,7 @@ we would see something like:
 
 And this output could be used then with say, a merge operation.
 
-### grep <pattern>
+### grep \<pattern>
 
 Search for a pattern within each documents.  Field values, and not the field names, are checked
 for a match.  All matching documents are output (as BSON).
@@ -64,7 +64,7 @@ for a match.  All matching documents are output (as BSON).
 Note: at the time of this writing, pattern can only be a simple text pattern, regular 
 expressions are NOT yet supported (but hopefully coming).
 
-### head [-n <N>] [-s <S>]
+### head [-n \<N>] [-s \<S>] 
 
 Output the first N documents in the file.  Output is BSON format.
 
@@ -92,7 +92,7 @@ Example:
       }
     }
 
-### merge <filename>
+### merge \<filename>
 
 Merge bson stream stdin with bson file on cmd line.  Must be same number of documents in 
 each input file.
@@ -105,21 +105,21 @@ each input file.
     $ bson print pretty < mydata.bson
     *json output is displayed with indentation and line feeds...*
 
-### project <fieldnamelist>
+### project \<fieldnamelist>
 
 Do projection on the input BSON, outputing the result.  Only top level field names may be 
 specified in the current implementation.
 
     $ bson project "last name","first_name",phone < customers.bson > phonelist.bson
 
-### promote <fieldname>
+### promote \<fieldname>
 
 Pull out the subobject specified by <fieldname> and output it (only).  If the field is missing
 or not an object nothing will be output for that document.
 
     $ bson promote associate.address < things.bson > addresses.bson
 
-### pull [-N] <fieldname>
+### pull [-N] \<fieldname>
 
 Extract a single field as a singleton element and output.
 
@@ -151,7 +151,7 @@ Example:
     {}
     {}
 
-### sample -n <N>
+### sample -\<N>
 
 sample outputs every Nth document in the file for sampling purposes.  Output is bson format.
 
@@ -173,11 +173,11 @@ delimited.  Field names are not output.  Numbers are output in their text repres
     $ # how many docs contain the text "Joseph"?
     $ bson text < docs.bson | grep Joseph | wc
 
-### unwind [-N] <fieldname>
+### unwind [-N] \<fieldname>
 
 Unwind an array of elements.  This is similar to the MongoDB $unwind operator.
 
--N option: emit null rather than nothing, when applicable.
+`-N` option: emit null rather than nothing, when applicable.
 
 Example:
 
@@ -201,7 +201,7 @@ Example:
 
 ## Other Options
 
--# option: tells the utility to output document numbers rather than the actual document as 
+`-#` option: tells the utility to output document numbers rather than the actual document as 
 output.  Simply used for troubleshooting; say, if you are getting an error mid-file and want 
 to track it down.
 
