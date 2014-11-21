@@ -32,5 +32,8 @@ Apache 2.0.
 
 ## Contributions
 
-Send a pull request on github, thanks.
+Send a pull request on github, thanks. We'll pull in things that we think fit although the goal is to keep things tidy and small.  Of course you can always fork if you want to create something different.
+
+Some automated tests would be real helpful for example...
+
 
