@@ -11,7 +11,7 @@ Note: Many of these utilities expect input from stdin, to facilitate piping. Use
 
 ## Documentation
 
-See the [doc/](tree/master/doc) directory.
+See the [doc/](doc) folder.
 
 ## Building
 
