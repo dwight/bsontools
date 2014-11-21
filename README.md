@@ -15,7 +15,7 @@ See the [doc/](tree/master/doc) directory.
 
 ## Building
 
-You will need the []bson-cxx](https://github.com/dwight/bson-cxx) library (a dependancy) to build the tools.  It is available on github.
+You will need the [bson-cxx](https://github.com/dwight/bson-cxx) library (a dependancy) to build the tools.  It is available on github.
 
 Place it as a peer level directory on disk with bsontools.  (That is you will see lines such as `#include "../../../bson-cxx/"` in the source code of these tools...)
 
