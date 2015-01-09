@@ -7,6 +7,7 @@
 #include "binary.h"
 #include "../../../bson-cxx/src/bson/json.h"
 #include "../../../bson-cxx/src/bson/bsonobjbuilder.h"
+#include "../../../bson-cxx/src/bson/bsonobjiterator.h"
 #include "cmdline.h"
 #include "parse_types.h"
 #include "../util/str.h"
@@ -227,6 +228,31 @@ private:
         }
         return unescape(b.str());
     }
+
+    bsonobjbuilder * fold(bsonobjbuilder& arr, bsonobjbuilder *bldr) {
+        bsonobj o = bldr->obj();
+        bsonobjiterator i(o);
+        set<string> names;
+        set<string> arrays;
+        while (i.more()) {
+            bsonelement e = i.next();
+            if (names.count(e.fieldName()))
+                arrays.insert(e.fieldName());
+            names.insert(e.fieldName());
+        }
+        if (arrays.empty())
+            return bldr;
+        for (auto i = arrays.begin(); i != arrays.end(); i++) {
+            bsonobjbuilder ab(arr.subarrayStart(*i));
+            int x = 0;
+            for (bsonobjiterator i(o); i.more();) {
+                bsonelement e = i.next();
+                ab.appendAs(e, ab.numStr(x++));
+            }
+        }
+        return bldr;
+    }
+
 public:
     // see 
     // http://cs.lmu.edu/~ray/notes/xmlgrammar/
@@ -266,6 +292,7 @@ public:
                     break;
             }
         }
+        bsonobjbuilder arr;
         if (has("/>")) {
             // <foo/> -- we could ignore or emit foo:null for the field (if no attributes)
             b.appendNull(nm);
@@ -294,7 +321,7 @@ public:
                 eat(nm.c_str());
                 debug("eat >")
                 eat(">");
-                debug("done2")
+                bldr = fold(arr, bldr);
             }
             else {
                 // <foo>99</foo>
@@ -312,7 +339,7 @@ public:
             }
         }
         if (bldr != &b) {
-            b.append(nm, subbldr.obj());
+            b.append(nm, bldr->obj());
         }
         return true;
     }
