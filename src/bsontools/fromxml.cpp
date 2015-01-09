@@ -378,7 +378,7 @@ void parseOptions(Opts& opts, string t) {
             opts.autoNum = true;
         }
         else {
-            throw std::exception("unknown command line option in -t parameter");
+            throw parse_error("unknown command line option in -t parameter");
         }
     }
 }

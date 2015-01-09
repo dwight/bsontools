@@ -20,4 +20,6 @@ env.Program(target = 'fromcsv', source = ["src/bsontools/fromcsv.cpp"] + dep1)
 
 env.Program(target = 'fromjson', source = ["src/bsontools/fromjson.cpp"] + dep1 + dep2)
 
+env.Program(target = 'fromxml', source = ["src/bsontools/fromxml.cpp"] + dep1)
+
 env.Program(target = 'bson', source = ["src/bsontools/bsonmain.cpp"] + dep1 + dep2)
