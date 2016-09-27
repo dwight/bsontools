@@ -684,7 +684,7 @@ namespace bsontools {
             cout << x.nDocs() << '\t' << x.largest << endl;
         }
         else {
-            cout << "Error: bad command line option?  Use -h for help.";
+            cout << "Error: bad command line option?  Use -h for help." << endl;
             return -1;
         }
         return 0;
